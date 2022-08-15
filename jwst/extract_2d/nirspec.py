@@ -26,6 +26,11 @@ def nrs_extract2d(input_model, slit_name=None):
         Input data model.
     slit_name : str or int
         Slit name.
+
+    Returns (JFH Added)
+    -------
+    output_model: `~jwst.datamodels.MultiSlitModel`
+
     """
     exp_type = input_model.meta.exposure.type.upper()
 
@@ -85,6 +90,8 @@ def nrs_extract2d(input_model, slit_name=None):
 
         output_model.slits.extend(slits)
 
+    from IPython import embed
+    embed()
     return output_model
 
 
