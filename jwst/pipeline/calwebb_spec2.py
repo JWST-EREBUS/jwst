@@ -214,7 +214,7 @@ class Spec2Pipeline(Pipeline):
             # cannot proceed.
             assign_wcs_exception = None
             try:
-                calibrated = self.assign_wcs(science)
+                calibrated = self.assign_wcs(science) # TODO: JFH Understand what this does next
             except Exception as exception:
                 assign_wcs_exception = exception
             if assign_wcs_exception is not None or \

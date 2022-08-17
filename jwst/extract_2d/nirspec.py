@@ -44,6 +44,9 @@ def nrs_extract2d(input_model, slit_name=None):
         raise AttributeError("Input model does not have a WCS object; assign_wcs should "
                              "be run before extract_2d.")
 
+
+    # JFH: slit2msa is defined in jwst.transforms.models.py on line 291. It is
+    # a subclass off of astropy.modeling.core import Model that defines models/transformations
     slit2msa = input_model.meta.wcs.get_transform('slit_frame', 'msa_frame')
     # This is a kludge but will work for now.
     # This model keeps open_slits as an attribute.
@@ -64,6 +67,7 @@ def nrs_extract2d(input_model, slit_name=None):
                 log.info('extract_2d updated S_REGION to '
                          '{0}'.format(output_model.meta.wcsinfo.s_region))
     else:
+        # JFH: This is what gets written out in the _cal.fits file
         output_model = datamodels.MultiSlitModel()
         output_model.update(input_model)
         slits = []
