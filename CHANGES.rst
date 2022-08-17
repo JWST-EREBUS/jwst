@@ -6,6 +6,7 @@ general
 
 - Made code style changes due to the new 5.0.3 version of flake8, which noted many
   missing white spaces after keywords. [#6958]
+- pin `jsonschema` below `4.10.0` to fix issues with unit and regression tests [#6986]
 
 ami_analyze
 -----------
@@ -66,6 +67,8 @@ outlier_detection
 - Improved memory usage during `outlier_detection` by adding ability to work with
   input ``ImageModels`` that are saved to disk instead of keeping them in memory.
   New parameters were aded to the step to control this functionality. [#6904]
+
+- Fix reading of the source_type attribute for NIRSpec IFU data. [#6980]
 
 resample
 --------
