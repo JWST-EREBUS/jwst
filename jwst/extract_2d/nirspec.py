@@ -94,8 +94,6 @@ def nrs_extract2d(input_model, slit_name=None):
 
         output_model.slits.extend(slits)
 
-    from IPython import embed
-    embed()
     return output_model
 
 
