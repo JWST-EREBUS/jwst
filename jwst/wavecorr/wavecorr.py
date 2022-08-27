@@ -98,6 +98,9 @@ def do_correction(input_model, wavecorr_file):
             for slit in output_model.slits:
                 if _is_point_source(slit, exp_type):
                     apply_zero_point_correction(slit, wavecorr_file)
+                    # JFH seems weird to me that they are setting the status of the global container to
+                    # to be complete for each slit in this loop. Also weird that if the source is not a point source
+                    # they just do nothing, but don't indicate that the step was skipped.
                     output_model.meta.cal_step.wavecorr = 'COMPLETE'
 
     return output_model
