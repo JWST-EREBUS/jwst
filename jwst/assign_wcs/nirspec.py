@@ -1657,6 +1657,7 @@ def nrs_wcs_set_input(input_model, slit_name, wavelength_range=None,
     else:
         if slit_y_low is None or slit_y_high is None:
             slit_y_low, slit_y_high = _get_y_range(input_model)
+        # JFH If you want to extend the extent of the slits, I think here is where you would do it.
         bb = compute_bounding_box(transform, wavelength_range,
                                   slit_ymin=slit_y_low, slit_ymax=slit_y_high)
 
