@@ -10,8 +10,8 @@ from astropy.table import Table
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from tweakwcs.imalign import align_wcs
-from tweakwcs.tpwcs import JWSTgWCS
-from tweakwcs.matchutils import TPMatch
+from tweakwcs.correctors import JWSTWCSCorrector
+from tweakwcs.matchutils import XYXYMatch
 
 # LOCAL
 from ..stpipe import Step
@@ -72,6 +72,16 @@ class TweakRegStep(Step):
         min_gaia = integer(min=0, default=5) # Min number of GAIA sources needed
         save_gaia_catalog = boolean(default=False)  # Write out GAIA catalog as a separate product
         output_use_model = boolean(default=True)  # When saving use `DataModel.meta.filename`
+        abs_minobj = integer(default=15) # Minimum number of objects acceptable for matching when performing absolute astrometry
+        abs_searchrad = float(default=6.0) # The search radius in arcsec for a match when performing absolute astrometry
+        # We encourage setting this parameter to True. Otherwise, xoffset and yoffset will be set to zero.
+        abs_use2dhist = boolean(default=True) # Use 2D histogram to find initial offset when performing absolute astrometry?
+        abs_separation = float(default=0.1) # Minimum object separation in arcsec when performing absolute astrometry
+        abs_tolerance = float(default=0.7) # Matching tolerance for xyxymatch in arcsec when performing absolute astrometry
+        # Fitting geometry when performing absolute astrometry
+        abs_fitgeometry = option('shift', 'rshift', 'rscale', 'general', default='rshift')
+        abs_nclip = integer(min=0, default=3) # Number of clipping iterations in fit when performing absolute astrometry
+        abs_sigma = float(min=0.0, default=3.0) # Clipping limit in sigma units when performing absolute astrometry
     """
 
     reference_file_types = []
@@ -96,6 +106,7 @@ class TweakRegStep(Step):
 
         # Build the catalogs for input images
         for image_model in images:
+            # source finding
             catalog = make_tweakreg_catalog(
                 image_model, self.kernel_fwhm, self.snr_threshold,
                 brightest=self.brightest, peakmax=self.peakmax
@@ -190,7 +201,7 @@ class TweakRegStep(Step):
             self.log.info('')
 
             # align images:
-            tpmatch = TPMatch(
+            xyxymatch = XYXYMatch(
                 searchrad=self.searchrad,
                 separation=self.separation,
                 use2dhist=self.use2dhist,
@@ -206,7 +217,7 @@ class TweakRegStep(Step):
                     enforce_user_order=self.enforce_user_order,
                     expand_refcat=self.expand_refcat,
                     minobj=self.minobj,
-                    match=tpmatch,
+                    match=xyxymatch,
                     fitgeom=self.fitgeometry,
                     nclip=self.nclip,
                     sigma=(self.sigma, 'rmse')
@@ -277,6 +288,10 @@ class TweakRegStep(Step):
             else:
                 output_name = None
 
+            # initial shift to be used with absolute astrometry
+            self.abs_xoffset = 0
+            self.abs_yoffset = 0
+
             self.gaia_catalog = self.gaia_catalog.strip()
             gaia_cat_name = self.gaia_catalog.upper()
 
@@ -310,13 +325,13 @@ class TweakRegStep(Step):
                 # Update to separation needed to prevent confusion of sources
                 # from overlapping images where centering is not consistent or
                 # for the possibility that errors still exist in relative overlap.
-                tpmatch_gaia = TPMatch(
-                    searchrad=self.searchrad * 3.0,
-                    separation=self.separation / 10.0,
-                    use2dhist=self.use2dhist,
-                    tolerance=self.tolerance,
-                    xoffset=0.0,
-                    yoffset=0.0
+                xyxymatch_gaia = XYXYMatch(
+                    searchrad=self.abs_searchrad,
+                    separation=self.abs_separation,
+                    use2dhist=self.abs_use2dhist,
+                    tolerance=self.abs_tolerance,
+                    xoffset=self.abs_xoffset,
+                    yoffset=self.abs_yoffset
                 )
 
                 # Set group_id to same value so all get fit as one observation
@@ -335,11 +350,11 @@ class TweakRegStep(Step):
                     refcat=ref_cat,
                     enforce_user_order=True,
                     expand_refcat=False,
-                    minobj=self.minobj,
-                    match=tpmatch_gaia,
-                    fitgeom=self.fitgeometry,
-                    nclip=self.nclip,
-                    sigma=(self.sigma, 'rmse')
+                    minobj=self.abs_minobj,
+                    match=xyxymatch_gaia,
+                    fitgeom=self.abs_fitgeometry,
+                    nclip=self.abs_nclip,
+                    sigma=(self.abs_sigma, 'rmse')
                 )
 
         for imcat in imcats:
@@ -419,7 +434,7 @@ class TweakRegStep(Step):
 
         # create WCSImageCatalog object:
         refang = image_model.meta.wcsinfo.instance
-        im = JWSTgWCS(
+        im = JWSTWCSCorrector(
             wcs=image_model.meta.wcs,
             wcsinfo={'roll_ref': refang['roll_ref'],
                      'v2_ref': refang['v2_ref'],
