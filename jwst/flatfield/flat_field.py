@@ -434,6 +434,7 @@ def nirspec_fs_msa(output_model, f_flat_model, s_flat_model, d_flat_model, dispa
         slit.var_flat = slit.data ** 2 / flat_data_squared * slit_flat.err ** 2
         slit.err = np.sqrt(slit.var_poisson + slit.var_rnoise + slit.var_flat)
 
+        # JFH This is causing a problem since the slit_flat.err is comparable to the flat
         # Combine the science and flat DQ arrays
         slit.dq |= slit_flat.dq
 
