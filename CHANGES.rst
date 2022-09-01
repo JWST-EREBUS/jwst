@@ -26,7 +26,7 @@ assign_wcs
   module to allow easy updating of FITS WCS stored in ``datamodel.meta.wcsinfo``
   from ``datamodel``'s GWCS. [#6935]
 
-- Populate ``WAVELENGTH`` extension for MIRI LRS slitless data [#6964]
+- Populate ``WAVELENGTH`` extension for MIRI LRS slitless data [#6964] [#7005]
 
 cube_build
 ----------
@@ -62,6 +62,8 @@ datamodels
 - Change name of ``P_READPA`` keyword in datamodel metadata to ``p_readpatt``
   to be consistent with other pattern keyword names [#7001]
 
+- Add "BACKGROUND" to the list of allowed values for the ``PATTTYPE`` keyword
+  for MIRI coronagraphic mode [#7009]
 
 documentation
 -------------
@@ -126,6 +128,11 @@ skymatch
 - Fix a bug so that computed background values eare subtracted from the image
   data when ``subtract=True``. [#6934]
 
+transforms
+----------
+
+- Updated the NIRISS WFSS transforms from direct to grism image to V4.[#6803]
+
 tweakreg
 --------
 
@@ -145,6 +152,8 @@ tweakreg
   in the ``tweakreg`` step. This catalog, if provided, will be used instead
   of the 'GAIA' catalogs for aligning all input images together as one single
   group. [#6946]
+
+- Exposed ``tweakreg_catalog`` parameters in ``tweakreg`` [#7003]
 
 - exposed additional parameters for absolute astrometry:
  ``abs_minobj``, ``abs_searchrad``, ``abs_use2dhist``, ``abs_separation``, ``abs_tolerance``, ``abs_fitgeometry``, ``abs_nclip``,  and ``abs_sigma``. [#6987]
