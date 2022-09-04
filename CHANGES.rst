@@ -1,4 +1,14 @@
-1.6.3 (unreleased)
+1.7.1 (unreleased)
+==================
+
+photom
+------
+
+- Fix bug in handling of NIRSpec FS data, so that the wavelength-dependent
+  flux conversion factors get computed correctly for both point-source and
+  extended-source data. [#7019]
+
+1.7.0 (2022-09-01)
 ==================
 
 general
