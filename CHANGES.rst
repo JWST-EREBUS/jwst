@@ -1,6 +1,11 @@
 1.7.1 (unreleased)
 ==================
 
+engdb_tools
+-----------
+
+- Add retries and timeout parameters to engineering access calls [#7025]
+
 photom
 ------
 
@@ -37,6 +42,11 @@ assign_wcs
   from ``datamodel``'s GWCS. [#6935]
 
 - Populate ``WAVELENGTH`` extension for MIRI LRS slitless data [#6964] [#7005]
+
+associations
+------------
+
+- Refactor Asn_Lv2WFSS to better descriminate what direct images should be used [#7010]
 
 cube_build
 ----------
