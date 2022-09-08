@@ -1,4 +1,5 @@
 import pytest
+
 from numpy import zeros
 from numpy.testing import assert_allclose
 from astropy import units as u
@@ -218,7 +219,7 @@ def test_sip_approx(tmpdir):
         'b_2_0': 4.914642322124454e-06,
         'b_2_1': 1.5704907984494963e-09,
         'b_3_0': -2.9578595707610732e-12,
-        'sipmxerr': 3.9454753271710595e-11,
+        'sipmxerr': 0.1291142984620709,
         'sipiverr': 0.11035960854622291,
         'ap_0_1': 4.186210141016899e-07,
         'ap_0_2': 1.5494761945928307e-06,
