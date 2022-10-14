@@ -1,4 +1,18 @@
-1.7.3 (unreleased)
+1.8.1 (unreleased)
+==================
+
+datamodels
+----------
+
+- Update the definition of the NOUTPUTS keyword to include "5" as an allowed value.
+  [#7062]
+
+set_telescope_pointing
+----------------------
+
+- Allow XML_DATA usage to override PRD specification [#7063]
+
+1.8.0 (2022-10-07)
 ==================
 
 align_refs
@@ -18,7 +32,7 @@ background
 ----------
 
 - Update the background subtraction step to accept rateints (3D) input
-  background exposures. [#7049]
+  background exposures, and updated docs accordingly. [#7049, #7055]
 
 combine_1d
 ----------
@@ -34,6 +48,13 @@ datamodels
   ``ind_asn_type`` to query this metadata. [#7046]
 
 - Added writing S_RESFRI for residual_fringe and R_FRIFRQ for FRINGEFREQ reference file. 
+
+jump
+----
+
+- First version of snowball/shower flagging for the jump step
+  JP-#2645. This code will not be actiavated without either a set of
+  parameter reference files or a command line override. [#7039]
 
 master_background
 -----------------
@@ -81,6 +102,8 @@ set_telescope_pointing
 ----------------------
 
 - Migrate set_telescope_pointing to pysiaf-based exclusively [#6993]
+
+- Return non-zero status from the set_telescope_pointing command-line when an error occurs [#7056]
 
 
 tweakreg
