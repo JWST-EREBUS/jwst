@@ -1210,7 +1210,7 @@ class IFUCubeData():
                                                                       input_model.meta.wcs.output_frame.name)
 
                 temp_ra1, temp_dec1, lam_temp = alpha_beta2world(0, 0, lam_med)
-                temp_ra2, temp_dec2, lam_temp = alpha_beta2world(0, 2, lam_med)
+                temp_ra2, temp_dec2, lam_temp = alpha_beta2world(2, 0, lam_med)
 
             elif self.instrument == 'NIRSPEC':
                 slice_wcs = nirspec.nrs_wcs_set_input(input_model, 0)
@@ -1227,7 +1227,7 @@ class IFUCubeData():
             # ________________________________________________________________________________
             # temp_dec1 is in degrees
             dra, ddec = (temp_ra2 - temp_ra1) * np.cos(temp_dec1 * np.pi / 180.0), (temp_dec2 - temp_dec1)
-            self.rot_angle = np.arctan2(dra, ddec) * 180. / np.pi
+            self.rot_angle = 90 + np.arctan2(dra, ddec) * 180. / np.pi
             log.info(f'Rotation angle between ifu and sky: {self.rot_angle}')
 
 # ________________________________________________________________________________
@@ -1818,11 +1818,13 @@ class IFUCubeData():
                 across1,along1,lam1 = detector2slicer(x, y - 0.49 * pixfrac)
                 across2,along2,lam2 = detector2slicer(x, y + 0.49 * pixfrac)
 
+                # Ensure that our ordering wraps around the footprint instead of crossing
+                # footprint on a diagonal
                 ra1, dec1, _ = slicer2world(across1 - across_width * pixfrac / 2, along1, lam1)
                 ra2, dec2, _ = slicer2world(across1 + across_width * pixfrac / 2, along1, lam1)
 
-                ra3, dec3, _ = slicer2world(across2 - across_width * pixfrac / 2, along2, lam2)
-                ra4, dec4, _ = slicer2world(across2 + across_width * pixfrac / 2, along2, lam2)
+                ra3, dec3, _ = slicer2world(across2 + across_width * pixfrac / 2, along2, lam2)
+                ra4, dec4, _ = slicer2world(across2 - across_width * pixfrac / 2, along2, lam2)
 
                 # near the slice boundaries the corners can become Nan - do not use pixels with
                 # Nan corners
@@ -1840,7 +1842,7 @@ class IFUCubeData():
                 ra2 = ra2[final]
                 dec2 = dec2[final]
                 ra3 = ra3[final]
-                dec3 = dec4[final]
+                dec3 = dec3[final]
                 ra4 = ra4[final]
                 dec4 = dec4[final]
                 dwave = dwave[final]
@@ -2078,6 +2080,11 @@ class IFUCubeData():
                                        self.naxis2, self.naxis1))
         dq = self.spaxel_dq.reshape((self.naxis3,
                                      self.naxis2, self.naxis1))
+
+        # Set np.nan values wherever the DO_NOT_USE flag is set
+        dnu = np.where((dq & dqflags.pixel['DO_NOT_USE']) != 0)
+        flux[dnu] = np.nan
+        var[dnu] = np.nan
 
         # For MIRI MRS, apply a quality cut to help fix spectral tearing at the ends of each band.
         # This is largely taken care of by the WCS regions file, but there will still be 1-2 possibly

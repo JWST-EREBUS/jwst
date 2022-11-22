@@ -10,7 +10,7 @@ import re
 
 from jwst.associations import (
     Association,
-    ProcessList,
+    ListCategory,
     libpath
 )
 from jwst.associations.registry import RegistryMarker
@@ -58,7 +58,7 @@ __all__ = [
     'Constraint_Target',
     'DMS_Level3_Base',
     'DMSAttrConstraint',
-    'ProcessList',
+    'ListCategory',
     'SimpleConstraint',
     'Utility',
 ]
@@ -83,11 +83,8 @@ LEVEL2B_EXPTYPES.extend(IMAGE2_SCIENCE_EXP_TYPES)
 LEVEL2B_EXPTYPES.extend(IMAGE2_NONSCIENCE_EXP_TYPES)
 LEVEL2B_EXPTYPES.extend(SPEC2_SCIENCE_EXP_TYPES)
 
-# Association Candidates that should never make Level3 associations
-INVALID_AC_TYPES = ['background']
-
 # Association Candidates that should have more than one observations
-MULTI_OBS_AC_TYPES = ['group']
+MULTI_OBS_AC_TYPES = ['group', 'background']
 
 
 class DMS_Level3_Base(DMSBaseMixin, Association):
@@ -363,11 +360,6 @@ class DMS_Level3_Base(DMSBaseMixin, Association):
         """Add item to this association."""
         member = self.make_member(item)
         if self.is_member(member):
-            # logger.debug(
-            #     'Member is already part of the association:'
-            #     '\n\tassociation: {}'
-            #     '\n]tmember: {}'.format(self, member)
-            # )
             return
 
         self.update_validity(member)
@@ -465,21 +457,6 @@ class DMS_Level3_Base(DMSBaseMixin, Association):
             )
         result = '\n'.join(result_list)
         return result
-
-    def ok_candidate(self, member=None):
-        """Validation test for acceptable candidates
-
-        Parameters
-        ----------
-        member : Member
-            Member being added causing check.
-            Not used
-
-        Returns
-        -------
-        is_valid : bool
-        """
-        return self.acid.type.lower() not in INVALID_AC_TYPES
 
 
 @RegistryMarker.utility
@@ -841,7 +818,7 @@ class Constraint_Target(DMSAttrConstraint):
                 name='target',
                 sources=['targetid'],
                 onlyif=lambda item: association.get_exposure_type(item) != 'background',
-                force_reprocess=ProcessList.EXISTING,
+                force_reprocess=ListCategory.EXISTING,
                 only_on_match=True,
             )
 
@@ -894,7 +871,7 @@ class AsnMixin_Science(DMS_Level3_Base):
                 )
             ],
             name='acq_constraint',
-            work_over=ProcessList.EXISTING
+            work_over=ListCategory.EXISTING
         )
 
         # Put all constraints together.

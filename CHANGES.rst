@@ -1,5 +1,152 @@
-1.8.1 (unreleased)
+1.8.5 (unreleased)
 ==================
+
+assign_wcs
+----------
+
+- Fix computation of bounding box corners for WFSS grism 2D cutouts. [#7312]
+
+associations
+------------
+
+- Moved text dump of associations to happen when using the '-D' option,
+  rather than the '-v' option. [#7068]
+
+- Added background association candidates to list of level 3 candidate
+  types requiring members from more than one observation [#7329]
+
+- Refactor item reprocessing for efficiency. Also refactor how background associations are configured [#7332]
+
+- Suppress the use of association candidates for level 3 products marked with WFSC_LOS_JITTER. [#7339]
+
+- Split NIRISS WFSS dual grism (gr150r+gr150c) associations into separate asn's for each grism. [#7351]
+
+- Remove defaulting of the is_psf column [#7356]
+
+cube_build
+----------
+
+- Fix a bug in 3d drizzle code for NIRSpec IFU.  [#7306]
+
+- Change fill value for regions of SCI and ERR extensions with no data
+  from 0 to nan. [#7337]
+
+datamodels
+----------
+
+- Add subarray keywords in the ``filteroffset`` schema [#7317]
+
+- Remove duplicate enum entries for PATTTYPE (dither pattern type) values [#7331]
+
+- Added ``SUB400X256ALWB`` to subarray enum list of allowed NIRCam values. This
+  replaces ``SUB320ALWB``, which is retained in the ``obsolete`` enum list.
+  [#7361]
+  
+extract_1d
+----------
+
+- Fix IFU spectral extraction code to not fail on NaN fill values
+  that now populate empty regions of the data cubes. [#7337]
+
+extract_2d
+----------
+
+- Fix slice limits used in extraction of WFSS 2D cutouts. [#7312]
+
+flatfield
+---------
+
+- JP-2993 Update the flat-field ERR computation for FGS guider mode exposures to
+  combine the input ERR and the flat field ERR in quadrature. [#7346]
+  
+general
+-------
+
+- Add requirement for asdf-transform-schemas >= 0.3.0 [#7352]
+
+- Reorganize and expand user documentation, update docs landing page. Add install instructions, quickstart guide, and elaborate on running
+  pipeline in Python and with strun. [#6919]
+
+guider_cds
+----------
+
+- Calculate and output the ERR array based on the gain and readnoise
+  variances, and force the stack mode to use the default gain and readnoise
+  pixel values. [#7309]
+
+lib
+---
+
+- Fix circular import in ``lib.wcs_utils``. [#7330]
+
+photom
+------
+
+- Cutout pixel area array to match the subarray of the science data. [#7319]
+
+- Remove duplicated division of pixel area during photometric calibration
+  of NIRSpec IFU data with EXTENDED source type; correct units in pixel area
+  division to sr from square arcseconds [#7336]
+
+resample
+--------
+
+- Enhanced spectral output WCS construction to guard against nearly identical
+  points. [#7321]
+
+- Added a utility function ``decode_context()`` to help identify all input
+  images that have contributed with flux to an output (resampled)
+  pixel. [#7345]
+
+tweakreg
+--------
+
+- Do not skip tweakreg step in ``Image3Pipeline`` when ``ModelContainer``
+  has only one group. This is a continuation of PR6938. [#7326]
+
+- Fix a bug in the logic that handles inputs with a single image group when
+  an absolute reference catalog is provided. [#7328]
+  
+1.8.4 (2022-11-15)
+==================
+
+documentation
+-------------
+
+- Update deprecation notice with copyedit changes [#7348]
+
+- Clarify how to manage a local CRDS cache [#7350]
+
+1.8.3 (2022-11-11)
+==================
+
+documentation
+-------------
+
+- CRDS PUB deprecation notice and transition documentation [#7342]
+
+1.8.2 (2022-10-20)
+==================
+
+set_telescope_pointing
+----------------------
+
+- Revert "JP-2940 Return non-zero status from the set_telescope_pointing" [#7301]
+
+1.8.1 (2022-10-17)
+==================
+
+associations
+------------
+
+- Expand the sequence field in a file name for association files from
+  3 characters to 5 characters. [#7061]
+
+cube_build
+----------
+
+- Changed IFUALIGN convention for MIRI so that isobeta is along cube X instead of
+  isoalpha along cube Y. [#7058]
 
 datamodels
 ----------
@@ -7,12 +154,22 @@ datamodels
 - Update the definition of the NOUTPUTS keyword to include "5" as an allowed value.
   [#7062]
 
+- Switch to using new ``asdf.resources`` entry-point mechanism for
+  registering schemas. [#7057]
+
+- Fix handling of ASN directory path by the ``ModelContainer``. [#7071]
+
+resample
+--------
+
+- Make the GWCSDrizzle.outcon attribute a property with setter [#7295]
+
 set_telescope_pointing
 ----------------------
 
 - Allow XML_DATA usage to override PRD specification [#7063]
 
-1.8.0 (2022-10-07)
+1.8.0 (2022-10-10)
 ==================
 
 align_refs
@@ -47,7 +204,8 @@ datamodels
   loaded from associations into ModelContainer. Modify container method
   ``ind_asn_type`` to query this metadata. [#7046]
 
-- Added writing S_RESFRI for residual_fringe and R_FRIFRQ for FRINGEFREQ reference file. 
+- Added S_RESFRI and R_FRIFRQ keywords for the residual fringe correction
+  step and its reference file. [#7051]
 
 jump
 ----
@@ -88,7 +246,7 @@ resample_spec
   containing negative spectral traces (due to nodded background subtraction)
   in a more robust way. [#7047]
 
- - Move update_slit_metadata out of ResampleData and into ResampleSpecStep. [#7042]
+- Move update_slit_metadata out of ResampleData and into ResampleSpecStep. [#7042]
 
 
 residual_fringe
@@ -105,13 +263,13 @@ set_telescope_pointing
 
 - Return non-zero status from the set_telescope_pointing command-line when an error occurs [#7056]
 
-
 tweakreg
 --------
 
 - Relaxed FITS WCS SIP fitting parameters for the tweakreg step to make the
   code more robust. [#7038]
 
+- Added support for user-provided catalog files. [#7022]
 
 1.7.2 (2022-09-12)
 ==================
