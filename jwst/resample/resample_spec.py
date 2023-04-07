@@ -6,15 +6,18 @@ from scipy.optimize import minimize_scalar
 from astropy import coordinates as coord
 from astropy import units as u
 from astropy.modeling.models import (
-    Mapping, Tabular1D, Linear1D, Pix2Sky_TAN, RotateNative2Celestial, Identity
+    Mapping, Tabular1D, Linear1D, Pix2Sky_TAN, RotateNative2Celestial, Const1D
 )
 from astropy.modeling.fitting import LinearLSQFitter
 from gwcs import wcstools, WCS
 from gwcs import coordinate_frames as cf
 from gwcs.geometry import SphericalToCartesian
 
+from stdatamodels.jwst import datamodels
+
+from jwst.datamodels import ModelContainer
+
 from ..assign_wcs.util import wrap_ra
-from .. import datamodels
 from . import resample_utils
 from .resample import ResampleData
 
@@ -71,18 +74,29 @@ class ResampleSpecData(ResampleData):
         self.good_bits = good_bits
         self.in_memory = kwargs.get('in_memory', True)
 
+        output_wcs = kwargs.get('output_wcs', None)
+        output_shape = kwargs.get('output_shape', None)
+
         # Define output WCS based on all inputs, including a reference WCS
-        if resample_utils.is_sky_like(self.input_models[0].meta.wcs.output_frame):
-            if self.input_models[0].meta.instrument.name != "NIRSPEC":
-                self.output_wcs = self.build_interpolated_output_wcs()
+        if output_wcs is None:
+            if resample_utils.is_sky_like(
+                self.input_models[0].meta.wcs.output_frame
+            ):
+                if self.input_models[0].meta.instrument.name != "NIRSPEC":
+                    self.output_wcs = self.build_interpolated_output_wcs()
+                else:
+                    self.output_wcs = self.build_nirspec_output_wcs()
             else:
-                self.output_wcs = self.build_nirspec_output_wcs()
+                self.output_wcs = self.build_nirspec_lamp_output_wcs()
         else:
-            self.output_wcs = self.build_nirspec_lamp_output_wcs()
+            self.output_wcs = output_wcs
+            if output_shape is not None:
+                self.output_wcs.array_shape = output_shape[::-1]
+
         self.blank_output = datamodels.SlitModel(tuple(self.output_wcs.array_shape))
         self.blank_output.update(self.input_models[0])
         self.blank_output.meta.wcs = self.output_wcs
-        self.output_models = datamodels.ModelContainer()
+        self.output_models = ModelContainer()
 
         log.info(f"Driz parameter kernal: {self.kernel}")
         log.info(f"Driz parameter pixfrac: {self.pixfrac}")
@@ -214,10 +228,17 @@ class ResampleSpecData(ResampleData):
                                                  fill_value=np.nan)
         self.data_size = (ny, len(ref_lam))
 
-        # Construct the final transform
+        # Construct the final transform.
+        # First coordinate is set to 0 to represent the "horizontal" center
+        # of the slit (if we imagine slit to be vertical in the usual X-Y 2D
+        # cartesian frame):
         mapping = Mapping((0, 1, 0))
-        mapping.inverse = Mapping((2, 1))
-        out_det2slit = mapping | Identity(1) & y_slit_model & wavelength_transform
+        inv_mapping = Mapping((2, 1))
+        inv_mapping.inverse = mapping
+        mapping.inverse = inv_mapping
+        zero_model = Const1D(0)
+        zero_model.inverse = zero_model
+        det2slit = mapping | zero_model & y_slit_model & wavelength_transform
 
         # Create coordinate frames
         det = cf.Frame2D(name='detector', axes_order=(0, 1))
@@ -230,7 +251,7 @@ class ResampleSpecData(ResampleData):
                                 reference_frame=coord.ICRS())
         world = cf.CompositeFrame([sky, spec], name='world')
 
-        pipeline = [(det, out_det2slit), (slit_frame, s2w), (world, None)]
+        pipeline = [(det, det2slit), (slit_frame, s2w), (world, None)]
         output_wcs = WCS(pipeline)
 
         # Compute bounding box and output array shape.  Add one to the y (slit)

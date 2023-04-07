@@ -80,15 +80,15 @@ def jitter_present(jitter, associations):
     return False
 
 
-def test_level3_wfscmb_jitter_suppression():
+def test_level3_wfscmb_jitter_suppression(tmp_path):
     """
     Make sure no candidate from the pool with DMS_NOTE equal to
     WFSC_LOS_JITTER is in any association.
     """
     pfile = "data/pool_033_wfs_jitter.csv"
     with mkstemp_pool_file(t_path(pfile)) as pool_path:
-        cmd_args = [pool_path]
-        generated = Main(cmd_args)
+        cmd_args = [pool_path, f"--path={tmp_path}"]
+        generated = Main.cli(cmd_args)
         jitter = get_jitter_not_jitter(pool_path)
 
     jitter_present_in_asn = jitter_present(jitter, generated.associations)

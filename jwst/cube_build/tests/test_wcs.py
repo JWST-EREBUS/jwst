@@ -5,7 +5,8 @@ Unit test for Cube Build testing for various wcs functions
 import numpy as np
 import math
 
-from jwst import datamodels
+from stdatamodels.jwst import datamodels
+
 from jwst.cube_build import ifu_cube
 from jwst.cube_build import coord
 from jwst.cube_build import cube_build_wcs_util
@@ -201,7 +202,6 @@ def test_setup_wcs():
         'spaxel_debug': None}
 
     pipeline = 3
-    filename = None
     input_model = None
     output_name_base = None
     output_type = None
@@ -212,7 +212,6 @@ def test_setup_wcs():
     instrument_info = None
     thiscube = ifu_cube.IFUCubeData(
         pipeline,
-        filename,
         input_model,
         output_name_base,
         output_type,

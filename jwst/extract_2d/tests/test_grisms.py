@@ -21,8 +21,8 @@ import numpy as np
 from astropy.io import fits
 from gwcs import wcs
 
-from jwst.datamodels.image import ImageModel
-from jwst.datamodels import CubeModel, SlitModel, MultiSlitModel
+from stdatamodels.jwst.datamodels import ImageModel, CubeModel, SlitModel, MultiSlitModel
+
 from jwst.assign_wcs.util import create_grism_bbox
 from jwst.assign_wcs import AssignWcsStep, nircam
 
@@ -203,6 +203,8 @@ def test_create_box_fits():
     source_catalog = get_file_path('step_SourceCatalogStep_cat.ecsv')
     hdul = create_hdul(exptype='NRC_WFSS', pupil='GRISMR', wcskeys=wcs_wfss_kw)
     im = ImageModel(hdul)
+    # Add fake data to pass a shape to wfss_imaging_wcs
+    im.data = np.zeros((512, 512))
     aswcs = AssignWcsStep()
     imwcs = aswcs(im)
     imwcs.meta.source_catalog = source_catalog
@@ -233,6 +235,9 @@ def test_create_box_gwcs():
     source_catalog = get_file_path('step_SourceCatalogStep_cat.ecsv')
     hdul = create_hdul(exptype='NRC_WFSS', pupil='GRISMR', wcskeys=wcs_wfss_kw)
     im = ImageModel(hdul)
+    # Add fake data to pass a shape to wfss_imaging_wcs
+    # The data array is not relevant
+    im.data = np.zeros((512, 512))
     aswcs = AssignWcsStep()
     imwcs = aswcs(im)
     imwcs.meta.source_catalog = source_catalog
@@ -256,6 +261,8 @@ def setup_image_cat():
     source_catalog = get_file_path('step_SourceCatalogStep_cat.ecsv')
     hdul = create_hdul(exptype='NRC_WFSS', pupil='GRISMR', wcskeys=wcs_wfss_kw)
     im = ImageModel(hdul)
+    # Add fake data to pass a shape to wfss_imaging_wcs
+    im.data = np.zeros((512, 512))
     im.meta.source_catalog = source_catalog
     aswcs = AssignWcsStep()
     imwcs = aswcs(im)
@@ -386,6 +393,10 @@ def test_extract_wfss_object():
     assert len(outmodel.slits) == 3
     ids = [slit.source_id for slit in outmodel.slits]
     assert ids == [9, 19, 19]
+
+    # Compare SRCDEC and SRCRA values
+    assert np.isclose(outmodel[0].source_dec, -27.80858320887945)
+    assert np.isclose(outmodel[0].source_ra, 53.13773660029234)
 
     names = [slit.name for slit in outmodel.slits]
     assert names == ['9', '19', '19']

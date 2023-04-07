@@ -1,10 +1,329 @@
-1.8.5 (unreleased)
+1.10.1 (unreleased)
+===================
+
+
+
+1.10.0 (2023-04-03)
+===================
+
+assign_wcs
+----------
+
+- Fix ``WCS.bounding_box`` computation for MIRI MRS TSO observations. [#7492]
+
+associations
+------------
+
+- Remove extra reprocessing of existing associations. [#7506]
+
+- Treat PSF exposures as science for Level 2 association processing. [#7508]
+
+calwebb_detector1
+-----------------
+
+- Added the call to the undersampling_correction step to the ``calwebb_detector1``
+  pipeline. [#7501]
+
+- Added regression test for ``calwebb_detector1`` pipeline which now
+  includes ``undersampling_correction``. [#7509]
+
+cube_build
+----------
+
+-  Windows: MSVC: Allocate ``wave_slice_dq`` array using ``mem_alloc_dq()`` [#7491]
+
+- Memory improvements, do not allow MIRI and 'internal_cal', allow user to set suffix. [#7521]
+  
+datamodels
+----------
+
+- Move ``jwst.datamodels`` out of ``jwst`` into ``stdatamodels.jwst.datamodels``. [#7439]
+
+documentation
+-------------
+
+- Fixed minor errors in the docs for EngDB, outlier_detection, and ramp fitting. [#7500]
+
+- Update documentation for ``calwebb_detector1`` to include the undersampling_correction
+  step. [#7510]
+
+- Clarify ``jump`` arguments documentation, and correct typos. [#7518]
+
+dq_init
+-------
+
+- Propagate ``DO_NOT_USE`` flags from MASK ref file to GROUPDQ array during
+  dq initialization [#7447]
+
+extract_1d
+----------
+
+- Fix the logic for handling the ``use_source_posn`` parameter, so that proper
+  precedence is given for command line override, reference file settings, and
+  internal decisions of the appropriate setting (in that order). [#7466]
+
+- Edit surface brightness unit strings for parsing by ``astropy.units`` [#7511]
+
+- Update to be skipped for NIRSpec fixed slit modes with rateints input as that
+  mode is not allowed. [#7516]
+
+jump
+----
+
+- This has the changes in the JWST repo that allow the new parameters to be passed to the STCAL code
+  that made the following changes:
+  Updated the code for both NIR Snowballs and MIRI Showers. The snowball
+  flagging will now extend the saturated core of snowballs. Also,
+  circles are no longer used for snowballs preventing the huge circles
+  of flagged pixels from a glancing CR. Finally snowball flagging now has more stringent tests
+  to prevent incorrect indentification of snowballs.
+  Shower code is completely new and is now able to find extended
+  emission far below the single pixel SNR. It also allows detected
+  showers to flag groups after the detection. [#7478]
+
+other
+-----
+
+- Update ``minimum_deps`` script to use ``importlib_metadata`` and ``packaging``
+  instead of ``pkg_resources``. [#7457]
+
+- Switch ``stcal.dqflags`` imports to ``stdatamodels.dqflags``. [#7475]
+- Fix failing ``check-security`` job in CI. [#7496]
+
+- Fix memory leaks in packages that use C code: ``cube_build``,
+  ``wfss_contam``, and ``straylight``. [#7493]
+
+- add `opencv-python` to hard dependencies for usage of snowball detection in the jump step in `stcal` [#7499]
+
+outlier_detection
+-----------------
+
+- Update the documentation describing the algorithm and the parameters
+  used for controlling the step.  [#7481]
+
+pathloss
+--------
+
+- Repeat pathloss correction array into cube, to apply step to
+  rateints input for MIRI LRS fixed slit data [#7446]
+
+photom
+------
+
+- Fix bug so that each slit of a NIRSpec fixed-slit dataset gets the proper flux
+  calibration applied, based on the slit-dependent source type (POINT or EXTENDED).
+  [#7451]
+
+- Correct units of ``photom_uniform`` array to MJy/sr for NIRSpec fixed
+  slit data, to allow for expected behavior in ``master_background`` processing. [#7464]
+
+pipeline
+--------
+
+- Update the calwebb_spec2 pipeline to move the MIRI MRS straylight step to before
+  the flat-fielding step. [#7486]
+
+- Update the calwebb_spec2 pipeline to make a deep copy of the current results before
+  calling the ``resample_spec`` and ``extract_1d`` steps, to avoid issues with the
+  input data accidentally getting modified by those steps. [#7451]
+
+ramp_fitting
+------------
+
+- Changed computations for ramps that have only one good group in the 0th
+  group.  Ramps that have a non-zero groupgap should not use group_time, but
+  (NFrames+1)*TFrame/2, instead.  [#7461, spacetelescope/stcal#142]
+
+- Update ramp fitting to calculate separate readnoise variance for processing
+  ``undersampling_correction`` output [#7484]
+
+resample
+--------
+
+- Added support for custom reference WCS for the resample steps. [#7442]
+
+- Require minimum version of ``drizzle`` to be at least 1.13.7, which fixes
+  a bug due to which parts of input images may not be present in the output
+  resampled image under certain circumstances. [#7460]
+
+- Carry through good bits correctly for the variance array [#7515]
+
+- Update ``resample_spec`` to be skipped for NIRSpec fixed slit MultiSlitModel
+  rateints input as that mode is not allowed. [#7516]  
+
+residual_fringe
+---------------
+
+- Fix bug in Residual Fringe step handling of NaNs in input [#7471]
+
+scripts
+-------
+
+- Added a script ``adjust_wcs.py`` to apply additional user-provided rotations
+  and scale corrections to an imaging WCS of a calibrated image. [#7430]
+
+set_telescope_pointing
+----------------------
+
+- Correct WCS determination for aperture MIRIM_TAMRS [#7449]
+
+- Fill values of ``TARG_RA`` and ``TARG_DEC`` with ``RA_REF`` and ``DEC_REF``
+  if target location is not provided, e.g. for pure parallel observations [#7512]
+
+straylight
+----------
+
+- Fix bug with straylight zeroing out NaNs in input rate images, as these
+  are now deliberately set as such [#7455]
+
+scripts
+-------
+
+- Added a script ``adjust_wcs.py`` to apply additional user-provided rotations
+  and scale corrections to an imaging WCS of a calibrated image. [#7430]
+
+- Update ``minimum_deps`` script to use ``importlib_metadata`` and ``packaging``
+  instead of ``pkg_resources``. [#7457]
+
+- Offload ``minimum_deps`` script to ``minimum_dependencies`` package [#7463]
+
+transforms
+----------
+
+- Fix the NIRISS SOSS transform in the manifest and converter so the correct tag
+  is used and no warnings are issued by ASDF. [#7456]
+
+- Move ``jwst.transforms`` out of ``jwst`` into ``stdatamodels.jwst.transforms``. [#7441]
+
+tweakreg
+--------
+
+- Added a ``utils.py`` module and a function (``adjust_wcs()``) to apply
+  additional user-provided rotations and scale corrections to an imaging
+  WCS of a calibrated image. [#7430]
+
+- Fixed a bug due to which alignment may be aborted due to corrections
+  being "too large" yet compatible with step parameters. [#7494]
+
+- Added a trap for failures in source catalog construction, which now returns
+  an empty catalog for the image on which the error occurred. [#7507]
+
+- Fixed a crash occuring when alignment of a single image to an absolute
+  astrometric catalog (i.e., Gaia) fails due to not enough sources in the
+  catalog. [#7513]
+
+undersampling_correction
+------------------------
+
+- New step between jump and ramp_fitting in the ``Detector1Pipeline``. [#7479]
+
+1.9.6 (2023-03-09)
+==================
+
+associations
+------------
+
+- Ensure matched exposures generated by list of candidates continue processing,
+  in order to avoid linked exposures - like backgrounds - from getting dropped
+  from associations. [#7485]
+
+1.9.5 (2023-03-02)
+==================
+
+- add ``opencv-python`` to ``requirements-sdp.txt`` to support snowball correction
+
+1.9.4 (2023-01-27)
+==================
+
+associations
+------------
+
+- Ensure all NIRSpec imprint exposures are included in associations [#7438]
+
+calwebb_spec2
+-------------
+
+- Subtract leakcal/imprint image from science and backgrounds before background subtraction
+  is applied. [#7426]
+
+general
+-------
+
+- Pin ``BayesicFitting`` to < 3.1.0 to avoid an import error in that release. [#7435]
+
+imprint
+-------
+
+- Match leakcal/imprint image and science/background image by using dither position number [#7426]
+
+- Ensure that the observation number of the imprint image matches the observation number of the image
+  from which the imprint is to be subtracted. This is necessary to properly pair up imprint images
+  with their respective target and background images that are in different observations. [#7440]
+
+ramp_fitting
+------------
+
+- Bug fix for corner case of 1 good group and 1 jump-flagged group, so that slope is set to
+  NaN (instead of zero) and flagged as DO_NOT_USE. [spacetelescope/stcal#141]
+
+regtest
+-------
+
+- Update MIRI calwebb_coron3 test to use in-flight data [#7431]
+
+- Update NIRSpec fixed slit testing of spec2 and spec3 pipelines, and
+  bright object time series testing of spec2, to use in-flight data [#7432]
+
+- Update FGS testing of calwebb_image2 pipeline for FGS science-mode
+  to use in-flight data [#7433]
+
+- Update NIRISS calwebb_ami3 test to use in-flight data [#7434]
+
+1.9.3 (2023-01-12)
+==================
+
+cube_build
+----------
+
+- Fix bug for NIRSpec data that did not allow the user to specify the min/max wavelengths for
+  the cube [#7427]
+
+wfss_contam
+-----------
+
+- Open image models in a "with" context to keep models open while accessing contents [#7425]
+
+
+1.9.2 (2023-01-04)
+==================
+
+documentation
+-------------
+
+- Remove references to CRDS PUB server [#7421]
+
+
+1.9.1 (2023-01-03)
+==================
+
+associations
+------------
+
+- Modify entrypoint functions to not return anything unless a failure occurs [#7418]
+
+
+1.9.0 (2022-12-27)
 ==================
 
 assign_wcs
 ----------
 
 - Fix computation of bounding box corners for WFSS grism 2D cutouts. [#7312]
+
+- Updated the loading of NIRSpec MSA configuration data to assign the source_id
+  for each slitlet from the shutter entry that contains the primary/main source. [#7379]
+
+- Added approximated imaging FITS WCS to WFSS grism image headers. [#7373, #7412]
 
 associations
 ------------
@@ -23,13 +342,31 @@ associations
 
 - Remove defaulting of the is_psf column [#7356]
 
+- Fix association registry ListCategory enum bug under Python 3.11 [#7370]
+
+- Fix NIRSpec IFU NOD background subtract and include leakcal in the Level2 associations. [#7405]
+
+- Do not clobber reprocessing lists when Level 2 rules are operating on 'c' type candidates [#7410]
+
+combine_1d
+----------
+
+- Sort combined wavelength array before building spectral wcs [#7374]
+
 cube_build
 ----------
 
 - Fix a bug in 3d drizzle code for NIRSpec IFU.  [#7306]
 
 - Change fill value for regions of SCI and ERR extensions with no data
-  from 0 to nan. [#7337]
+  from 0 to NaN. [#7337]
+
+- Remove code trimming zero-valued planes from cubes, so that cubes of fixed length will always
+  be produced. Move NaN-value setting to below spectral tear cleanup. [#7391]
+
+- Fix several bugs in memory management in the C code for cube build, which
+  would result in attempts to deallocate memory that was never allocated, thus
+  resulting in a core dump. [#7408]
 
 datamodels
 ----------
@@ -41,31 +378,56 @@ datamodels
 - Added ``SUB400X256ALWB`` to subarray enum list of allowed NIRCam values. This
   replaces ``SUB320ALWB``, which is retained in the ``obsolete`` enum list.
   [#7361]
-  
+
+- Added var_flat to the initialization in slit.py [#7397]
+
+documentation
+-------------
+
+- Update deprecation notice to name the CRDS_PATH variable appropriately. [#7392]
+
 extract_1d
 ----------
 
 - Fix IFU spectral extraction code to not fail on NaN fill values
   that now populate empty regions of the data cubes. [#7337]
 
+- Re-organized the way extract1d reference files are read in based
+  on type of file and added more checks when reading files. [#7369]
+
+- Update ATOCA algorithm for NIRISS SOSS extraction to development version;
+  includes increased robustness to various data issues, wavelength grid storage in
+  a new datamodel, and increased parameter control of ATOCA behavior. [#6945]
+
+- replace deprecated usages of ``np.int()`` to fix Numpy errors [#7403]
+
 extract_2d
 ----------
 
 - Fix slice limits used in extraction of WFSS 2D cutouts. [#7312]
 
+- Add keywords for source RA and Dec for WFSS extractions [#7372]
+
 flatfield
 ---------
 
-- JP-2993 Update the flat-field ERR computation for FGS guider mode exposures to
+- Update the flat-field ERR computation for FGS guider mode exposures to
   combine the input ERR and the flat field ERR in quadrature. [#7346]
-  
+
 general
 -------
 
 - Add requirement for asdf-transform-schemas >= 0.3.0 [#7352]
 
-- Reorganize and expand user documentation, update docs landing page. Add install instructions, quickstart guide, and elaborate on running
+- Reorganize and expand user documentation, update docs landing page.
+  Add install instructions, quickstart guide, and elaborate on running
   pipeline in Python and with strun. [#6919]
+
+- Fixed wrong Python version expected in ``__init__.py`` [#7366]
+
+- Replace ``flake8`` with ``ruff`` [#7054]
+
+- Fix deprecation warnings introduced by ``pytest`` ``7.2`` ahead of ``8.0`` [#7325]
 
 guider_cds
 ----------
@@ -79,6 +441,11 @@ lib
 
 - Fix circular import in ``lib.wcs_utils``. [#7330]
 
+outlier_detection
+-----------------
+
+- Fix deprecated calls to photutils.CircularAnnulus. [#7407]
+
 photom
 ------
 
@@ -88,6 +455,16 @@ photom
   of NIRSpec IFU data with EXTENDED source type; correct units in pixel area
   division to sr from square arcseconds [#7336]
 
+ramp_fitting
+------------
+
+- Change the propagation of the SATURATED flag to be done only for complete
+  saturation. [#7363, spacetelescope/stcal#125]
+
+- Set values to NaN, instead of zero, for pixels in rate and rateints products
+  that have no useable data for a slope calculation. Update unit tests for this change.
+  [#7389, spacetelescope/stcal#131]
+
 resample
 --------
 
@@ -95,8 +472,14 @@ resample
   points. [#7321]
 
 - Added a utility function ``decode_context()`` to help identify all input
-  images that have contributed with flux to an output (resampled)
-  pixel. [#7345]
+  images that have contributed flux to an output (resampled) pixel. [#7345]
+
+- Fixed a bug in the definition of the output WCS for NIRSpec. [#7359]
+
+set_telescope_pointing
+----------------------
+
+- Pin PRD versions for tests that are not testing changes in PRD. [#7380]
 
 tweakreg
 --------
@@ -106,9 +489,29 @@ tweakreg
 
 - Fix a bug in the logic that handles inputs with a single image group when
   an absolute reference catalog is provided. [#7328]
-  
+
+- Pinned ``tweakwcs`` version to 0.8.1, which fixes a bug in how 2D histogram's
+  bin size is computed. This affects pre-alignment performed before source
+  matching. [#7417]
+
+wfss_contam
+-----------
+
+- Pull 2D cutout offsets from SlitModel subarray metadata rather than
+  grism WCS transform. [#7343]
+
+
+1.8.5 (2022-12-12)
+==================
+
+documentation
+-------------
+
+- Update deprecation notice to name the CRDS_PATH variable appropriately. [#7392]
+
 1.8.4 (2022-11-15)
 ==================
+
 
 documentation
 -------------
@@ -116,6 +519,7 @@ documentation
 - Update deprecation notice with copyedit changes [#7348]
 
 - Clarify how to manage a local CRDS cache [#7350]
+
 
 1.8.3 (2022-11-11)
 ==================
@@ -197,6 +601,12 @@ combine_1d
 - Fixed a bug to properly exclude input spectra that have only 1
   wavelength bin. [#7053]
 
+dark_current
+------------
+
+- Bug fix for computation of the total number of frames when science data use
+  on-board frame averaging and/or group gaps. [spacetelescope/stcal#121]
+
 datamodels
 ----------
 
@@ -211,7 +621,7 @@ jump
 ----
 
 - First version of snowball/shower flagging for the jump step
-  JP-#2645. This code will not be actiavated without either a set of
+  JP-2645. This code will not be actiavated without either a set of
   parameter reference files or a command line override. [#7039]
 
 master_background

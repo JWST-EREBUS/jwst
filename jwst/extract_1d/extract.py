@@ -11,13 +11,15 @@ from astropy.io import fits
 from gwcs import WCS
 from stdatamodels import DataModel
 from stdatamodels.properties import ObjectNode
-
-from .. import datamodels
-from ..datamodels import dqflags, SlitModel, SpecModel
-from ..datamodels.apcorr import (
+from stdatamodels.jwst import datamodels
+from stdatamodels.jwst.datamodels import dqflags, SlitModel, SpecModel
+from stdatamodels.jwst.datamodels.apcorr import (
     MirLrsApcorrModel, MirMrsApcorrModel, NrcWfssApcorrModel, NrsFsApcorrModel,
     NrsMosApcorrModel, NrsIfuApcorrModel, NisWfssApcorrModel
 )
+
+from jwst.datamodels import SourceModelContainer
+
 
 from ..assign_wcs import niriss  # for specifying spectral order number
 from ..assign_wcs.util import wcs_bbox_from_shape
@@ -133,31 +135,41 @@ def open_extract1d_ref(refname: str, exptype: str) -> dict:
         handle for the jwst.datamodels object for the extract1d file.
     """
 
+    # the extract1d reference file can be 1 of three types:  'json', 'fits', or  'asdf'
+    refname_type = refname[-4:].lower()
     if refname == "N/A":
         ref_dict = None
     else:
-        fd = open(refname)
-        try:
-            ref_dict = json.load(fd)
-            ref_dict['ref_file_type'] = FILE_TYPE_JSON
-            fd.close()
-        except (UnicodeDecodeError, JSONDecodeError):
-            # input file is not JSON so lets try fits and then asdf
-            fd.close()
+        if refname_type == 'json':
+            fd = open(refname)
+            try:
+                ref_dict = json.load(fd)
+                ref_dict['ref_file_type'] = FILE_TYPE_JSON
+                fd.close()
+            except (UnicodeDecodeError, JSONDecodeError):
+                # Input file does not load correctly as json file.
+                # Probably an error in json file
+                fd.close()
+                log.error("Extract1d json reference file has an error, run a json validator off line and fix the file")
+                raise RuntimeError("Invalid json extract 1d reference file, run json validator off line and fix file.")
+        elif refname_type == 'fits':
             try:
                 fd = fits.open(refname)
-                fits_present = 1
-                fd.close()
-            except OSError:
-                fits_present = 0
-            if fits_present:
                 extract_model = datamodels.MultiExtract1dImageModel(refname)
                 ref_dict = {'ref_file_type': FILE_TYPE_IMAGE, 'ref_model': extract_model}
-            else:
-                extract_model = datamodels.Extract1dIFUModel(refname)
-                ref_dict = dict()
-                ref_dict['ref_file_type'] = FILE_TYPE_ASDF
-                ref_dict['ref_model'] = extract_model
+                fd.close()
+            except OSError:
+                log.error("Extract1d fits reference file has an error")
+                raise RuntimeError("Invalid fits extract 1d reference file- fix reference file.")
+
+        elif refname_type == 'asdf':
+            extract_model = datamodels.Extract1dIFUModel(refname)
+            ref_dict = dict()
+            ref_dict['ref_file_type'] = FILE_TYPE_ASDF
+            ref_dict['ref_model'] = extract_model
+        else:
+            log.error("Invalid Extract 1d reference file, must be json, fits or asdf.")
+            raise RuntimeError("Invalid Extract 1d reference file, must be json, fits or asdf.")
 
     return ref_dict
 
@@ -366,11 +378,22 @@ def get_extract_parameters(
                         # If the user supplied a value, use that value.
                         extract_params['bkg_order'] = bkg_order
 
-                    if use_source_posn is None:
-                        extract_params['use_source_posn'] = aper.get('use_source_posn', False)
-                    else:
-                        # If the user supplied a value, use that value.
-                        extract_params['use_source_posn'] = use_source_posn
+                    # Set use_source_posn based on hierarchy of priorities:
+                    # parameter value on the command line is highest precedence,
+                    # then parameter value from the extract1d reference file,
+                    # and finally a default setting based on exposure type.
+                    use_source_posn_aper = aper.get('use_source_posn', None)  # value from the extract1d ref file
+                    if use_source_posn is None:  # no value set on command line
+                        if use_source_posn_aper is None:  # no value set in ref file
+                            # Use a suitable default
+                            if meta.exposure.type in ['MIR_LRS-FIXEDSLIT', 'MIR_MRS', 'NRS_FIXEDSLIT', 'NRS_IFU', 'NRS_MSASPEC']:
+                                use_source_posn = True
+                                log.info(f"Turning on source position correction for exp_type = {meta.exposure.type}")
+                            else:
+                                use_source_posn = False
+                        else:  # use the value from the ref file
+                            use_source_posn = use_source_posn_aper
+                    extract_params['use_source_posn'] = use_source_posn
 
                     extract_params['extract_width'] = aper.get('extract_width')
                     extract_params['position_correction'] = 0  # default value
@@ -421,7 +444,7 @@ def get_extract_parameters(
                 extract_params['subtract_background'] = False
 
     else:
-        log.error(f"Reference file type {ref_dict['ref_file_type']} not recognized")
+        log.error("Reference file type {ref_dict['ref_file_type']} not recognized")
 
     return extract_params
 
@@ -2737,7 +2760,7 @@ def do_extract1d(
 
     extract_ref_dict = ref_dict_sanity_check(extract_ref_dict)
 
-    if isinstance(input_model, datamodels.SourceModelContainer):
+    if isinstance(input_model, SourceModelContainer):
         # log.debug('Input is a SourceModelContainer')
         was_source_model = True
 
@@ -2771,14 +2794,6 @@ def do_extract1d(
             log.warning(
                 f"Correcting for source position is not supported for exp_type = "
                 f"{meta_source.meta.exposure.type}, so use_source_posn will be set to False",
-            )
-
-    # Turn use_source_posn on for types that should use it by default
-    if use_source_posn is None:
-        if exp_type in ['MIR_LRS-FIXEDSLIT', 'MIR_MRS', 'NRS_FIXEDSLIT', 'NRS_IFU', 'NRS_MSASPEC']:
-            use_source_posn = True
-            log.info(
-                f"Turning on source position correction for exp_type = {exp_type}"
             )
 
     # Handle inputs that contain one or more slit models
@@ -3587,13 +3602,13 @@ def create_extraction(extract_ref_dict,
         flux_units = 'Jy'
         f_var_units = 'Jy^2'
         sb_units = 'MJy/sr'
-        sb_var_units = '(MJy/sr)^2'
+        sb_var_units = 'MJy^2 / sr^2'
     else:
         photom_has_been_run = False
         flux_units = 'DN/s'
-        f_var_units = '(DN/s)^2'
+        f_var_units = 'DN^2 / s^2'
         sb_units = 'DN/s'
-        sb_var_units = '(DN/s)^2'
+        sb_var_units = 'DN^2 / s^2'
         log.warning("The photom step has not been run.")
 
     # Turn off use_source_posn if the source is not POINT

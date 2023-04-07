@@ -9,14 +9,17 @@ from astropy.io import fits
 from scipy.interpolate import UnivariateSpline
 import gwcs.coordinate_frames as cf
 from gwcs import selector
-from . import pointing
-from ..transforms import models as jwmodels
-from .util import (not_implemented_mode, subarray_transform,
-                   velocity_correction, transform_bbox_from_shape, bounding_box_from_subarray)
-from ..datamodels import (DistortionModel, FilteroffsetModel,
-                          DistortionMRSModel, WavelengthrangeModel,
-                          RegionsModel, SpecwcsModel)
+
 from stdatamodels import s3_utils
+from stdatamodels.jwst.datamodels import (DistortionModel, FilteroffsetModel,
+                                          DistortionMRSModel, WavelengthrangeModel,
+                                          RegionsModel, SpecwcsModel)
+from stdatamodels.jwst.transforms import models as jwmodels
+
+from . import pointing
+from .util import (not_implemented_mode, subarray_transform,
+                   velocity_correction, transform_bbox_from_shape,
+                   bounding_box_from_subarray)
 
 
 log = logging.getLogger(__name__)
@@ -420,8 +423,7 @@ def ifu(input_model, reference_files):
     tel2sky = pointing.v23tosky(input_model) & models.Identity(1)
 
     # Put the transforms together into a single transform
-    shape = input_model.data.shape
-    det2abl.bounding_box = ((-0.5, shape[0] - 0.5), (-0.5, shape[1] - 0.5))
+    det2abl.bounding_box = transform_bbox_from_shape(input_model.data.shape)
     pipeline = [(detector, det2abl),
                 (miri_focal, abl2v2v3l),
                 (v2v3, va_corr),

@@ -52,6 +52,11 @@ SPECIAL_POOLS = {
         'xfail': 'JSOCINT-TDB: WFSC ROUTINE VISIT issue',
         'slow': False,
     },
+    'jw00663_20221218t111937_pool': {
+        'args': ['-i', 'o004', 'c1000'],
+        'xfail': None,
+        'slow': False,
+    },
     'jw00676_20210403t114320_pool': {
         'args': [],
         'xfail': None,
@@ -66,6 +71,56 @@ SPECIAL_POOLS = {
         'args': [],
         'xfail': None,
         'slow': True,
+    },
+    'jw00839_20221220t025418_pool': {
+        'args': ['-i', 'o002', 'c1000'],
+        'xfail': None,
+        'slow': False,
+    },
+    'jw01194_20230115t113819_pool': {
+        'args': [],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw01257_20221201t192226_pool': {
+        'args': [],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw01290_20230304t140931_pool': {
+        'args': [],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw01288_c1005_mostilno12_pool': {
+        'args': ['-i', 'o003', 'c1001', 'c1005'],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw01290_20230304t140931_withids_pool': {
+        'args': ['-i', 'o012', 'c1018'],
+        'xfail': None,
+        'slow': False,
+    },
+    'jw01355_20230109t002554_pool': {
+        'args': [],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw01493_20230307t040130_withids_pool': {
+        'args': ['-i', 'o003', 'c1000'],
+        'xfail': None,
+        'slow': False,
+    },
+    'jw02064_20230302t112350_pool': {
+        'args': [],
+        'xfail': None,
+        'slow': True,
+    },
+    'jw02064_20230302t112350_withids_pool': {
+        'args': ['-i', 'o061', 'c1008', 'c1017'],
+        'xfail': None,
+        'slow': False,
     },
     'jw80600_20171108T041522_pool': {
         'args': [],
@@ -139,7 +194,8 @@ def test_against_standard(sdpdata_module, pool_path, slow):
         ]
 
         # Create the associations
-        asn_generate(args)
+        asn_generate.cli(
+            args)
 
         # Compare to the truth associations.
         truth_paths = sdpdata_module.truth_paths(pool)

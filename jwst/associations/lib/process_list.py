@@ -3,11 +3,6 @@ from collections import deque
 from enum import Enum
 from functools import reduce
 
-class ListCategory(Enum):
-    RULES      = 0
-    BOTH       = 1
-    EXISTING   = 2
-    NONSCIENCE = 3
 
 __all__ = [
     'ListCategory',
@@ -16,6 +11,13 @@ __all__ = [
     'ProcessQueue',
     'ProcessQueueSorted'
 ]
+
+
+class ListCategory(Enum):
+    RULES      = 0
+    BOTH       = 1
+    EXISTING   = 2
+    NONSCIENCE = 3
 
 
 class ProcessItem:
@@ -278,8 +280,7 @@ def workover_filter(process_list, work_over):
         if work_over in [ListCategory.RULES, ListCategory.BOTH]:
             result.work_over = ListCategory.BOTH
         else:
-            result.work_over = work_over
-    else:
-        if work_over not in [ListCategory.RULES, ListCategory.BOTH]:
             result = None
+    elif work_over not in [ListCategory.RULES, ListCategory.BOTH]:
+        result = None
     return result

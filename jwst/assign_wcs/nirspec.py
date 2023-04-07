@@ -15,10 +15,13 @@ from astropy.io import fits
 from gwcs import coordinate_frames as cf
 from gwcs.wcstools import grid_from_bounding_box
 
-from ..transforms.models import (Rotation3DToGWA, DirCos2Unitless, Slit2Msa,
-                                 AngleFromGratingEquation, WavelengthFromGratingEquation,
-                                 Gwa2Slit, Unitless2DirCos, Logical, Slit, Snell,
-                                 RefractionIndexFromPrism)
+from stdatamodels.jwst.datamodels import (CollimatorModel, CameraModel, DisperserModel, FOREModel,
+                                          IFUFOREModel, MSAModel, OTEModel, IFUPostModel, IFUSlicerModel,
+                                          WavelengthrangeModel, FPAModel)
+from stdatamodels.jwst.transforms.models import (Rotation3DToGWA, DirCos2Unitless, Slit2Msa,
+                                                 AngleFromGratingEquation, WavelengthFromGratingEquation,
+                                                 Gwa2Slit, Unitless2DirCos, Logical, Slit, Snell,
+                                                 RefractionIndexFromPrism)
 
 from .util import (
     MSAFileError,
@@ -27,9 +30,6 @@ from .util import (
     velocity_correction
 )
 from . import pointing
-from ..datamodels import (CollimatorModel, CameraModel, DisperserModel, FOREModel,
-                          IFUFOREModel, MSAModel, OTEModel, IFUPostModel, IFUSlicerModel,
-                          WavelengthrangeModel, FPAModel)
 from ..lib.exposure_types import is_nrs_ifu_lamp
 
 log = logging.getLogger(__name__)
@@ -551,7 +551,7 @@ def get_open_msa_slits(msa_file, msa_metadata_id, dither_position,
     Returns
     -------
     slitlets : list
-        A list of `~jwst.transforms.models.Slit` objects. Each slitlet is a tuple with
+        A list of `~stdatamodels.jwst.transforms.models.Slit` objects. Each slitlet is a tuple with
         ("name", "shutter_id", "xcen", "ycen", "ymin", "ymax",
         "quadrant", "source_id", "shutter_state", "source_name", "source_alias", "stellarity",
         "source_xpos", "source_ypos", "source_ra", "source_dec")
@@ -623,11 +623,13 @@ def get_open_msa_slits(msa_file, msa_metadata_id, dither_position,
         slitlets_sid = [x for x in msa_data if x['slitlet_id'] == slitlet_id]
         open_shutters = [x['shutter_column'] for x in slitlets_sid]
 
+        # How many shutters in the slitlet are labeled as "main" or "primary"?
         n_main_shutter = len([s for s in slitlets_sid if s['primary_source'] == 'Y'])
+
         # In the next part we need to calculate, find, determine 5 things:
         #    quadrant,  xcen, ycen,  ymin, ymax
 
-        # There are no main shutters, all are background
+        # There are no main shutters: all are background
         if n_main_shutter == 0:
             if len(open_shutters) == 1:
                 jmin = jmax = j = open_shutters[0]
@@ -645,7 +647,8 @@ def get_open_msa_slits(msa_file, msa_metadata_id, dither_position,
             source_id = _get_bkg_source_id(bkg_counter, max_source_id)
             log.info(f'Slitlet_id {slitlet_id} is background only; assigned source_id = {source_id}')
             bkg_counter += 1
-        # There is 1 main shutter, phew, that makes it easier.
+
+        # There is 1 main shutter: phew, that makes it easier.
         elif n_main_shutter == 1:
             xcen, ycen, quadrant, source_xpos, source_ypos = [
                 (s['shutter_row'], s['shutter_column'], s['shutter_quadrant'],
@@ -659,8 +662,12 @@ def get_open_msa_slits(msa_file, msa_metadata_id, dither_position,
             j = ycen
             ymax = yhigh + margin + (jmax - j) * 1.15
             ymin = -(-ylow + margin) + (jmin - j) * 1.15
-            source_id = slitlets_sid[0]['source_id']
-        # Not allowed....
+            # get the source_id from the primary shutter entry
+            for i in range(len(slitlets_sid)):
+                if slitlets_sid[i]['primary_source'] == 'Y':
+                    source_id = slitlets_sid[i]['source_id']
+
+        # More than 1 main shutter: Not allowed!
         else:
             message = ("For slitlet_id = {}, metadata_id = {}, "
                        "and dither_index = {}".format(slitlet_id, msa_metadata_id, dither_position))
@@ -799,7 +806,7 @@ def ifuslit_to_slicer(slits, reference_files, input_model):
 
     Returns
     -------
-    model : `~jwst.transforms.Slit2Msa` model.
+    model : `~stdatamodels.jwst.transforms.Slit2Msa` model.
         Transform from ``slit_frame`` to ``slicer`` frame.
     """
     ifuslicer = IFUSlicerModel(reference_files['ifuslicer'])
@@ -847,7 +854,7 @@ def slit_to_msa(open_slits, msafile):
 
     Returns
     -------
-    model : `~jwst.transforms.Slit2Msa` model.
+    model : `~stdatamodels.jwst.transforms.Slit2Msa` model.
         Transform from ``slit_frame`` to ``msa_frame``.
     """
     msa = MSAModel(msafile)
@@ -895,7 +902,7 @@ def gwa_to_ifuslit(slits, input_model, disperser, reference_files, slit_y_range)
 
     Returns
     -------
-    model : `~jwst.transforms.Gwa2Slit` model.
+    model : `~stdatamodels.jwst.transforms.Gwa2Slit` model.
         Transform from ``gwa`` frame to ``slit_frame``.
    """
     ymin, ymax = slit_y_range
@@ -988,7 +995,7 @@ def gwa_to_slit(open_slits, input_model, disperser,
 
     Returns
     -------
-    model : `~jwst.transforms.Gwa2Slit` model.
+    model : `~stdatamodels.jwst.transforms.Gwa2Slit` model.
         Transform from ``gwa`` frame to ``slit_frame``.
     """
     agreq = angle_from_disperser(disperser, input_model)
@@ -1557,7 +1564,7 @@ def gwa_to_ymsa(msa2gwa_model, lam_cen=None, slit=None, slit_y_range=None):
         The transform from the MSA to the GWA.
     lam_cen : float
         Central wavelength in meters.
-    slit : `~jwst.transforms.models.Slit`
+    slit : `~stdatamodels.jwst.transforms.models.Slit`
         A Fixed slit or MOS slitlet.
     slit_y_range: list or tuple of size 2
         The lower and upper limit of the slit.

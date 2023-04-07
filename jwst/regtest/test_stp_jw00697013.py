@@ -19,7 +19,8 @@ from pathlib import Path
 import asdf
 import numpy as np
 
-import jwst.datamodels as dm
+import stdatamodels.jwst.datamodels as dm
+
 from jwst.lib import siafdb
 from jwst.lib.file_utils import pushdir
 import jwst.lib.set_telescope_pointing as stp
@@ -121,7 +122,9 @@ def databases(rtdata_module):
     siaf_db, metas : `set_telescope_pointing.SiafDb`, dict
         Returns the tuple of the siaf database and all exposures meta information.
     """
-    siaf_db = siafdb.SiafDb()
+
+    # Pin the PRD. Not testing changes in PRD
+    siaf_db = siafdb.SiafDb(prd='PRDOPSSOC-055')
 
     # Get the exposures' meta information
     metas_path = rtdata_module.get_data('pointing/jw00697013_metas.asdf')

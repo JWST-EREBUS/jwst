@@ -17,13 +17,14 @@ from typing import Union, List
 from gwcs import WCS
 from gwcs.wcstools import wcs_from_fiducial, grid_from_bounding_box
 from gwcs import utils as gwutils
-from stdatamodels import DataModel
 from stpipe.exceptions import StpipeExitException
+
+from stdatamodels import DataModel
+from stdatamodels.jwst.datamodels import WavelengthrangeModel
+from stdatamodels.jwst.transforms.models import GrismObject
 
 from . import pointing
 from ..lib.catalog_utils import SkyObject
-from ..transforms.models import GrismObject
-from ..datamodels import WavelengthrangeModel
 
 
 log = logging.getLogger(__name__)
@@ -1246,17 +1247,19 @@ def in_ifu_slice(slice_wcs, ra, dec, lam):
 
     # Compute the slice X coordinate using the center of the slit.
     SLX, _, _ = slice_wcs.get_transform('slit_frame', 'slicer')(0, 0, 2e-6)
-    onslice_ind = np.isclose(slx, SLX,atol=5e-4)
+    onslice_ind = np.isclose(slx, SLX, atol=5e-4)
 
     return onslice_ind
 
 
 def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
-                        crpix=None, projection='TAN', **kwargs):
+                        crpix=None, projection='TAN', imwcs=None, **kwargs):
     """
-    For imaging data models *only*, update data model's ``meta.wcsinfo``
-    attribute using a FITS SIP approximation of the current data model's
-    GWCS from ``meta.wcs``.
+    Update ``datamodel.meta.wcsinfo`` based on a FITS WCS + SIP approximation
+    of a GWCS object. By default, this function will approximate
+    the datamodel's GWCS object stored in ``datamodel.meta.wcs`` but it can
+    also approximate a user-supplied GWCS object when provided via
+    the ``imwcs`` parameter.
 
     The default mode in using this attempts to achieve roughly 0.01 pixel
     accuracy over the entire image.
@@ -1276,6 +1279,13 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
 
     Parameters
     ----------
+
+    datamodel : `ImageModel`
+        The input data model for imaging or WFSS mode whose ``meta.wcsinfo``
+        field should be updated from GWCS. By default, ``datamodel.meta.wcs``
+        is used to compute FITS WCS + SIP approximation. When ``imwcs`` is
+        not `None` then computed FITS WCS will be an approximation of the WCS
+        provided through the ``imwcs`` parameter.
 
     max_pix_error : float, optional
         Maximum allowed error over the domain of the pixel array. This
@@ -1320,6 +1330,17 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
         projection models inherited from
         :py:class:`~astropy.modeling.projections.Pix2SkyProjection`.
 
+    imwcs : `gwcs.WCS`, None, optional
+        Imaging GWCS object for WFSS mode whose FITS WCS approximation should
+        be computed and stored in the ``datamodel.meta.wcsinfo`` field.
+        When ``imwcs`` is `None` then WCS from ``datamodel.meta.wcs``
+        will be used.
+
+        .. warning::
+
+            Used with WFSS modes only. For other modes, supplying a different
+            WCS from ``datamodel.meta.wcs`` will result in the GWCS and
+            FITS WCS descriptions to diverge.
 
     Other Parameters
     ----------------
@@ -1373,6 +1394,16 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
     For more details, see :py:meth:`~gwcs.wcs.WCS.to_fits_sip`.
 
     """
+    if crpix is None:
+        crpix = [datamodel.meta.wcsinfo.crpix1, datamodel.meta.wcsinfo.crpix2]
+    if None in crpix:
+        crpix = None
+
+    # For WFSS modes the imaging WCS is passed as an argument.
+    # For imaging modes it is retrieved from the datamodel.
+    if imwcs is None:
+        imwcs = datamodel.meta.wcs
+
     # make a copy of kwargs:
     kwargs = {k: v for k, v in kwargs.items()}
 
@@ -1386,12 +1417,7 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
     if degree is None:
         degree = range(1, _MAX_SIP_DEGREE)
 
-    if crpix is None:
-        crpix = [datamodel.meta.wcsinfo.crpix1, datamodel.meta.wcsinfo.crpix2]
-    if None in crpix:
-        crpix = None
-
-    hdr = datamodel.meta.wcs.to_fits_sip(
+    hdr = imwcs.to_fits_sip(
         max_pix_error=max_pix_error,
         degree=degree,
         max_inv_pix_error=max_inv_pix_error,
@@ -1401,7 +1427,7 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
         **kwargs
     )
 
-    # update meta.wcs_info with fit keywords except for naxis*
+    # update meta.wcsinfo with FITS keywords except for naxis*
     del hdr['naxis*']
 
     # maintain convention of lowercase keys
@@ -1423,3 +1449,55 @@ def update_fits_wcsinfo(datamodel, max_pix_error=0.01, degree=None, npoints=32,
     datamodel.meta.wcsinfo.instance.update(hdr_dict)
 
     return hdr
+
+
+def wfss_imaging_wcs(wfss_model, imaging, bbox=None, **kwargs):
+    """ Add a FITS WCS approximation for imaging mode to WFSS headers.
+
+    Parameters
+    ----------
+
+    wfss_model : `~ImageModel`
+        Input WFSS model (NRC or NIS).
+    imaging : func, callable
+        The ``imaging`` function in the ``niriss`` or ``nircam`` modules.
+    bbox : tuple or None
+        The bounding box over which to approximate the distortion solution.
+        Typically this is based on the shape of the direct image.
+
+    """
+    xstart = wfss_model.meta.subarray.xstart
+    ystart = wfss_model.meta.subarray.ystart
+    reference_files = get_wcs_reference_files(wfss_model)
+    image_pipeline = imaging(wfss_model, reference_files)
+    imwcs = WCS(image_pipeline)
+    if bbox is not None:
+        imwcs.bounding_box = bbox
+    elif xstart is not None and ystart is not None and (xstart != 1 or ystart != 1):
+        imwcs.bounding_box = bounding_box_from_subarray(wfss_model)
+    else:
+        imwcs.bounding_box = wcs_bbox_from_shape(wfss_model.data.shape)
+
+    _ = update_fits_wcsinfo(wfss_model, projection='TAN', imwcs=imwcs, bounding_box=None, **kwargs)
+
+
+def get_wcs_reference_files(datamodel):
+    """Retrieve names of WCS reference files for NIS_WFSS and NRC_WFSS modes.
+
+    Parameters
+    ----------
+
+    datamodel : `~ImageModel`
+        Input WFSS file (NRC or NIS).
+
+    """
+    from jwst.assign_wcs import AssignWcsStep
+    refs = {}
+    step = AssignWcsStep()
+    for reftype in AssignWcsStep.reference_file_types:
+        val = step.get_reference_file(datamodel, reftype)
+        if val.strip() == 'N/A':
+            refs[reftype] = None
+        else:
+            refs[reftype] = val
+    return refs

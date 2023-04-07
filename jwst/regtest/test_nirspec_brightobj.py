@@ -4,7 +4,8 @@ import pytest
 from astropy.io.fits.diff import FITSDiff
 import numpy as np
 
-import jwst.datamodels as dm
+import stdatamodels.jwst.datamodels as dm
+
 from jwst.flatfield import FlatFieldStep
 from jwst.lib.suffix import replace_suffix
 from jwst.stpipe import Step
@@ -19,7 +20,7 @@ def run_tso_spec2_pipeline(jail, rtdata_module, request):
     rtdata = rtdata_module
 
     # Get the input exposure
-    rtdata.get_data('nirspec/tso/jw84600042001_02101_00001_nrs2_rateints.fits')
+    rtdata.get_data('nirspec/tso/jw02420001001_04101_00001-seg001_nrs1_rateints.fits')
 
     # Run the calwebb_spec2 pipeline;
     args = ["calwebb_spec2", rtdata.input,

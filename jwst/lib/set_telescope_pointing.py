@@ -68,12 +68,13 @@ from astropy.time import Time
 import numpy as np
 from scipy.interpolate import interp1d
 
+from stdatamodels.jwst import datamodels
+
 from .exposure_types import IMAGING_TYPES, FGS_GUIDE_EXP_TYPES
 from .set_velocity_aberration import compute_va_effects_vector
 from .siafdb import SIAF, SiafDb
 from ..assign_wcs.util import update_s_region_keyword, calc_rotation_matrix
 from ..assign_wcs.pointing import v23tosky
-from .. import datamodels
 from ..lib.engdb_tools import ENGDB_Service
 from ..lib.pipe_utils import is_tso
 
@@ -877,6 +878,16 @@ def update_wcs_from_telem(model, t_pars: TransformParameters):
         logger.warning('Calculation of S_REGION failed and will be skipped.')
         logger.warning('Exception is %s', e)
 
+    # If TARG_RA/TARG_DEC still 0/0 (e.g. pure parallels with no defined target),
+    # populate with RA_REF/DEC_REF values
+    if (model.meta.target.ra == 0.0 and model.meta.target.dec == 0.0) and (
+            'PARALLEL' in model.meta.visit.type):
+
+        logger.warning('No target location specified for parallel observation:'
+                       'copying reference point RA/Dec to TARG_RA/TARG_DEC.')
+        model.meta.target.ra = model.meta.wcsinfo.ra_ref
+        model.meta.target.dec = model.meta.wcsinfo.dec_ref
+
     return transforms
 
 
@@ -899,7 +910,7 @@ def update_s_region(model, siaf):
     logger.info("Vertices for aperture %s: %s", model.meta.aperture.name, vertices)
 
     # Execute IdealToV2V3, followed by V23ToSky
-    from ..transforms.models import IdealToV2V3
+    from stdatamodels.jwst.transforms.models import IdealToV2V3
     vparity = model.meta.wcsinfo.vparity
     v3yangle = model.meta.wcsinfo.v3yangle
 
@@ -2522,7 +2533,14 @@ def t_pars_from_model(model, **t_pars_kwargs):
             useafter = model.meta.observation.date
             if aperture_name != "UNKNOWN":
                 logger.info("Updating WCS for aperture %s", aperture_name)
-                siaf = t_pars.siaf_db.get_wcs(aperture_name, useafter)
+
+                # Special case. With aperture MIRIM_TAMRS, the siaf definition is
+                # for the subarray of interest. However, the whole detector is
+                # read out. Hence, need to convert pixel coordinates to be detector-based.
+                to_detector = False
+                if aperture_name == 'MIRIM_TAMRS':
+                    to_detector = True
+                siaf = t_pars.siaf_db.get_wcs(aperture_name, to_detector=to_detector, useafter=useafter)
         t_pars.siaf = siaf
         t_pars.useafter = useafter
     logger.debug('SIAF: %s', t_pars.siaf)

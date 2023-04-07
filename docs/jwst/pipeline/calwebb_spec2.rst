@@ -47,9 +47,9 @@ TSO exposures. The instrument mode abbreviations used in the table are as follow
 +==========================================================+=====+=====+=====+=====+=====+=====+======+======+========+=====+
 | :ref:`assign_wcs <assign_wcs_step>`                      | |c| | |c| | |c| | |c| | |c| | |c| |  |c| | |c|  |  |c|   | |c| |
 +----------------------------------------------------------+-----+-----+-----+-----+-----+-----+------+------+--------+-----+
-| :ref:`background <background_step>`                      | |c| | |c| | |c| | |c| |     | |c| |  |c| | |c|  |  |c|   |     |
-+----------------------------------------------------------+-----+-----+-----+-----+-----+-----+------+------+--------+-----+
 | :ref:`imprint <imprint_step>`                            |     | |c| | |c| |     |     |     |      |      |        |     |
++----------------------------------------------------------+-----+-----+-----+-----+-----+-----+------+------+--------+-----+
+| :ref:`background <background_step>`                      | |c| | |c| | |c| | |c| |     | |c| |  |c| | |c|  |  |c|   |     |
 +----------------------------------------------------------+-----+-----+-----+-----+-----+-----+------+------+--------+-----+
 | :ref:`msaflagopen <msaflagopen_step>`                    |     | |c| | |c| |     |     |     |      |      |        |     |
 +----------------------------------------------------------+-----+-----+-----+-----+-----+-----+------+------+--------+-----+
@@ -172,9 +172,9 @@ abbreviations used in the table are as follows:
 +=======================================+============+==============+=================+==============+
 | :ref:`assign_wcs <assign_wcs_step>`   |   ALL      |     ALL      |       ALL       |       ALL    |
 +---------------------------------------+------------+--------------+-----------------+--------------+
-| :ref:`background <background_step>`   |  NONE      |    NONE      |      NONE       |      NONE    |
-+---------------------------------------+------------+--------------+-----------------+--------------+
 | :ref:`imprint <imprint_step>`         |  NONE      |     IFU      |      NONE       |      NONE    |
++---------------------------------------+------------+--------------+-----------------+--------------+
+| :ref:`background <background_step>`   |  NONE      |    NONE      |      NONE       |      NONE    |
 +---------------------------------------+------------+--------------+-----------------+--------------+
 | :ref:`msaflagopen <msaflagopen_step>` |  MOS, IFU  |   MOS, IFU   |    MOS, IFU     |       MOS    |
 +---------------------------------------+------------+--------------+-----------------+--------------+
@@ -243,8 +243,13 @@ The input to the ``Spec2Pipeline`` pipeline is a countrate exposure, in the form
 of either "_rate" or "_rateints" data. A single input file can be processed or an
 ASN file listing multiple inputs can be used, in which case the processing steps
 will be applied to each input exposure, one at a time.
-If "_rateints" products are used as input, each step applies its algorithm to each
-integration in the exposure, where appropriate.
+
+If "_rateints" products are used as input, for modes other than NIRSpec Fixed Slit,
+each step applies its algorithm to each integration in the exposure, where appropriate.
+For the NIRSpec Fixed Slit mode the ``calwebb_spec2`` pipeline will currently
+skip both the :ref:`resample_spec <resample_step>` step and the
+:ref:`extract_1d <extract_1d_step>` step, because neither step supports
+multiple integration input products for this mode.
 
 Note that the steps :ref:`background <background_step>` and :ref:`imprint <imprint_step>`
 can only be executed when the pipeline is given an ASN file as input, because they rely on

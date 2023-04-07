@@ -4,7 +4,8 @@ import os.path as op
 import traceback
 import numpy as np
 
-from .. import datamodels
+from stdatamodels.jwst import datamodels
+
 from ..assign_wcs.util import NoDataOnDetectorError
 from ..lib.exposure_types import is_nrs_ifu_flatlamp, is_nrs_ifu_linelamp, is_nrs_slit_linelamp
 from ..stpipe import Pipeline
@@ -209,7 +210,8 @@ class Spec2Pipeline(Pipeline):
 
             # Decide on what steps can actually be accomplished based on the
             # provided input.
-            self._step_verification(exp_type, members_by_type, multi_int)
+
+            self._step_verification(exp_type, science, members_by_type, multi_int)
 
             # Start processing the individual steps.
             # `assign_wcs` is the critical step. Without it, processing
@@ -237,8 +239,21 @@ class Spec2Pipeline(Pipeline):
                         raise RuntimeError('Cannot determine WCS.')
 
         # Steps whose order is the same for all types of input.
-        calibrated = self.bkg_subtract(calibrated, members_by_type['background'])
+
+        # Leakcal subtraction (imprint)  occurs before background subtraction on a per-exposure basis.
+        # If there is only one `imprint` member, this imprint exposure is subtracted from all the
+        # science and background exposures.  Otherwise, there will be as many `imprint` members as
+        # there are science plus background members.
+
         calibrated = self.imprint_subtract(calibrated, members_by_type['imprint'])
+
+        # for each background image subtract an associated leak cal
+        for i, bkg_file in enumerate(members_by_type['background']):
+            bkg_imprint_sub = self.imprint_subtract(bkg_file, members_by_type['imprint'])
+            members_by_type['background'][i] = bkg_imprint_sub
+
+        calibrated = self.bkg_subtract(calibrated, members_by_type['background'])
+
         calibrated = self.msa_flagging(calibrated)
 
         # The order of the next few steps is tricky, depending on mode:
@@ -266,12 +281,14 @@ class Spec2Pipeline(Pipeline):
            and not isinstance(calibrated, datamodels.CubeModel):
 
             # Call the resample_spec step for 2D slit data
-            resampled = self.resample_spec(calibrated)
+            resampled = calibrated.copy()
+            resampled = self.resample_spec(resampled)
 
         elif is_nrs_slit_linelamp(calibrated):
 
             # Call resample_spec for NRS 2D line lamp slit data
-            resampled = self.resample_spec(calibrated)
+            resampled = calibrated.copy()
+            resampled = self.resample_spec(resampled)
 
         elif (exp_type in ['MIR_MRS', 'NRS_IFU']) or is_nrs_ifu_linelamp(calibrated):
 
@@ -279,7 +296,8 @@ class Spec2Pipeline(Pipeline):
             # always create a single cube containing multiple
             # wavelength bands
 
-            resampled = self.cube_build(calibrated)
+            resampled = calibrated.copy()
+            resampled = self.cube_build(resampled)
             if not self.cube_build.skip:
                 self.save_model(resampled[0], 's3d')
         else:
@@ -298,7 +316,8 @@ class Spec2Pipeline(Pipeline):
             else:
                 self.photom.suffix = 'x1d'
             self.extract_1d.save_results = False
-            x1d = self.extract_1d(resampled)
+            x1d = resampled.copy()
+            x1d = self.extract_1d(x1d)
 
             # Possible that no fit was possible - if so, skip photom
             if x1d is not None:
@@ -307,20 +326,19 @@ class Spec2Pipeline(Pipeline):
             else:
                 self.log.warning("Extract_1d did not return a DataModel - skipping photom.")
         else:
-            x1d = self.extract_1d(resampled)
+            x1d = resampled.copy()
+            x1d = self.extract_1d(x1d)
 
         resampled.close()
         if x1d is not None:
             x1d.close()
 
         # That's all folks
-        self.log.info(
-            'Finished processing product {}'.format(exp_product['name'])
-        )
+        self.log.info('Finished processing product {}'.format(exp_product['name']))
 
         return calibrated
 
-    def _step_verification(self, exp_type, members_by_type, multi_int):
+    def _step_verification(self, exp_type, input, members_by_type, multi_int):
         """Verify whether requested steps can operate on the given data
 
         Though ideally this would all be controlled through the pipeline
@@ -350,14 +368,15 @@ class Spec2Pipeline(Pipeline):
                 self.log.debug('Science data does not allow direct background subtraction. Skipping "bkg_subtract".')
                 self.bkg_subtract.skip = True
 
-        # Check for imprint subtraction
+        # Check for imprint subtraction. If we have a background then we could have an imprint image associated with the
+        # background.
         imprint = members_by_type['imprint']
         if not self.imprint_subtract.skip:
             if len(imprint) > 0 and (exp_type in ['NRS_MSASPEC', 'NRS_IFU']
                                      or is_nrs_ifu_flatlamp(input)):
-                if len(imprint) > 1:
+                if len(imprint) > 1 and (exp_type in ['NRS_MSASPEC'] or is_nrs_ifu_flatlamp(input)):
                     self.log.warning('Wrong number of imprint members')
-                members_by_type['imprint'] = imprint[0]
+                    members_by_type['imprint'] = imprint[0]
             else:
                 self.log.debug('Science data does not allow imprint processing. Skipping "imprint_subtraction".')
                 self.imprint_subtract.skip = True
@@ -494,8 +513,8 @@ class Spec2Pipeline(Pipeline):
     def _process_common(self, data):
         """Common spectral processing"""
         calibrated = self.srctype(data)
-        calibrated = self.flat_field(calibrated)
         calibrated = self.straylight(calibrated)
+        calibrated = self.flat_field(calibrated)
         calibrated = self.fringe(calibrated)
         calibrated = self.pathloss(calibrated)
         calibrated = self.barshadow(calibrated)

@@ -8,11 +8,14 @@ The ``extract_1d`` step has the following step-specific arguments.
   image data used to perform background extraction will be smoothed in the
   dispersion direction with a boxcar of this width.  If ``smoothing_length``
   is None (the default), the step will attempt to read the value from the
-  EXTRACT1D reference file.  If a value is specified in the reference file,
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file.
+  If a value is specified in the reference file,
   that value will be used.  Note that by specifying this parameter in the
-  EXTRACT1D reference file a different value can be designated for each slit.
-  If no value is specified either by the user or in the EXTRACT1D reference
-  file, no background smoothing is done.
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file, a different value can
+  be designated for each slit, if desired.
+  If no value is specified either by the user or in the
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file,
+  no background smoothing is done.
 
 ``--bkg_fit``
   The type of fit to perform to the background data in each image column
@@ -24,7 +27,8 @@ The ``extract_1d`` step has the following step-specific arguments.
   row) will be fit with a polynomial of order "bkg_order" (see below).
   Values of "mean" and "median" compute the simple average and median,
   respectively, of the background region values in each column (or row).
-  This parameter can also be specified in the EXTRACT1D reference file. If
+  This parameter can also be specified in the
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file. If
   specified in the reference file and given as an argument to the step by
   the user, the user-supplied value takes precedence.
 
@@ -34,7 +38,8 @@ The ``extract_1d`` step has the following step-specific arguments.
   dispersion is vertical) of the input image, and the fitted curve will be
   subtracted from the target data.  ``bkg_order`` = 0 (the minimum allowed
   value) means to fit a constant.  The user-supplied value (if any)
-  overrides the value in the EXTRACT1D reference file.  If neither is specified, a
+  overrides the value in the
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file.  If neither is specified, a
   value of 0 will be used. If a sufficient number of valid data points is
   unavailable to construct the polynomial fit, the fit will be forced to
   0 for that particular column (or row). If "bkg_fit" is not "poly", this
@@ -59,13 +64,14 @@ The ``extract_1d`` step has the following step-specific arguments.
 
 ``--subtract_background``
   This is a boolean flag to specify whether the background should be
-  subtracted.  If None, the value in the EXTRACT1D reference file (if any)
-  will be used.  If not None, this parameter overrides the value in the
-  reference file.
+  subtracted.  If None, the value in the :ref:`EXTRACT1D <extract1d_reffile>`
+  reference file (if any) will be used.  If not None, this parameter overrides
+  the value in the reference file.
 
 ``--use_source_posn``
   This is a boolean flag to specify whether the target and background extraction
-  region locations specified in the EXTRACT1D reference file should be shifted
+  region locations specified in the :ref:`EXTRACT1D <extract1d_reffile>` reference
+  file should be shifted
   to account for the expected position of the source. If None (the default),
   the step will make the decision of whether to use the source position based
   on the observing mode and the source type. The source position will only be
@@ -75,7 +81,11 @@ The ``extract_1d`` step has the following step-specific arguments.
   Coordinate System (WCS) to compute the x/y source location. For long-slit
   type modes (e.g. MIRI LRS and NIRSpec fixed-slit and MOS), only the position
   in the cross-dispersion direction is used to potentially offset the
-  extraction regions in that direction.
+  extraction regions in that direction. If this parameter is specified in the
+  :ref:`EXTRACT1D <extract1d_reffile>` reference file, the reference file value
+  will override any automatic settings based on exposure and source type.
+  As always, a value given by the user as an argument to the step overrides all
+  settings in the reference file or within the step code.
 
 ``--center_xy``
   A list of two integer values giving the desired x/y location for the center
@@ -89,38 +99,68 @@ The ``extract_1d`` step has the following step-specific arguments.
   Switch to select whether or not to apply an APERTURE correction during the
   Extract1dStep processing. Default is ``True``
 
-``soss_threshold``
+``--soss_atoca``
+  This is a NIRISS-SOSS algorithm-specific parameter; if True, use the ATOCA
+  algorithm to treat order contamination. Default is ``True``.
+
+``--soss_threshold``
   This is a NIRISS-SOSS algorithm-specific parameter; this sets the threshold
   value for a pixel to be included when modelling the spectral trace. The default
   value is 0.01.
 
-``soss_n_os``
-  This is a NIRISS-SOSS algorithm-specific parameter; this is an integer that sets]
+``--soss_n_os``
+  This is a NIRISS-SOSS algorithm-specific parameter; this is an integer that sets
   the oversampling factor of the underlying wavelength grid used when modeling the
   trace. The default value is 2.
 
-``soss_transform``
+``--soss_estimate``
+  This is a NIRISS-SOSS algorithm-specific parameter; filename or SpecModel of the
+  estimate of the target flux. The estimate must be a SpecModel with wavelength and
+  flux values.
+
+``--soss_wave_grid_in``
+  This is a NIRISS-SOSS algorithm-specific parameter; filename or SossWaveGridModel
+  containing the wavelength grid used by ATOCA to model each valid pixel of the
+  detector. If not given, the grid is determined based on an estimate of the flux
+  (soss_estimate), the relative tolerance (soss_rtol) required on each pixel model
+  and the maximum grid size (soss_max_grid_size).
+
+``--soss_wave_grid_out``
+  This is a NIRISS-SOSS algorithm-specific parameter; filename to hold the wavelength
+  grid calculated by ATOCA, stored in a SossWaveGridModel.
+
+``--soss_rtol``
+  This is a NIRISS-SOSS algorithm-specific parameter; the relative tolerance needed on a
+  pixel model. It is used to determine the sampling of the soss_wave_grid when not
+  directly given. Default value is 1.e-4.
+
+``--soss_max_grid_size``
+  This is a NIRISS-SOSS algorithm-specific parameter; the maximum grid size allowed. It is
+  used when soss_wave_grid is not provided to make sure the computation time or the memory
+  used stays reasonable. Default value is 20000.
+
+``--soss_transform``
   This is a NIRISS-SOSS algorithm-specific parameter; this defines a rotation to
   apply to the reference files to match the observation. It should be specified as
   a list of three floats, with default values of None.
 
-``soss_tikfac``
+``--soss_tikfac``
   This is a NIRISS-SOSS algorithm-specific parameter; this is the regularization
   factor used in the SOSS extraction. If not specified, ATOCA will calculate a
   best-fit value for the Tikhonov factor.
 
-``soss_width``
+``--soss_width``
   This is a NIRISS-SOSS algorithm-specific parameter; this specifies the aperture
   width used to extract the 1D spectrum from the decontaminated trace. The default
   value is 40.0 pixels.
 
-``soss_bad_pix``
+``--soss_bad_pix``
   This is a NIRISS-SOSS algorithm-specific parameter; this parameter sets the method
   used to handle bad pixels. There are currently two options: "model" will replace
   the bad pixel values with a modeled value, while "masking" will omit those pixels
   from the spectrum. The default value is "model".
 
-``soss_modelname``
+``--soss_modelname``
   This is a NIRISS-SOSS algorithm-specific parameter; if set, this will provide
   the optional ATOCA model output of traces and pixel weights, with the filename
   set by this parameter. By default this is set to None and this output is

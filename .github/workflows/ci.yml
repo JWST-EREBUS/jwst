@@ -8,97 +8,74 @@ on:
     tags:
       - '*'
   pull_request:
+    branches:
+      - master
   schedule:
     # Weekly Monday 9AM build
     - cron: "0 9 * * 1"
 
-env:
-  CRDS_SERVER_URL: https://jwst-crds.stsci.edu
-  CRDS_PATH: $HOME/crds_cache
-  CRDS_CLIENT_RETRY_COUNT: 3
-  CRDS_CLIENT_RETRY_DELAY_SECONDS: 20
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  tox:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Python 3.10 Tests
-            python-version: '3.10'
-            os: ubuntu-latest
-            toxenv: py310
-
-          - name: Latest dependency versions w/coverage
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: py39-cov
-
-          - name: Oldest dependency versions
-            os: ubuntu-latest
-            python-version: 3.8
-            toxenv: py38-oldestdeps-cov
-
-          - name: SDP dependencies in requirements-sdp.txt
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: sdpdeps
-
-          - name: Installed package with --pyargs
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: pyargs
-
-          - name: Verify install_requires in setup.py
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: verify-install-requires
-
-          - name: Build distribution
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: twine
-
-          - name: Code style check
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: style
-
-          - name: Security audit
-            os: ubuntu-latest
-            python-version: 3.9
-            toxenv: security
-
-          # MacOS job is flaky on Github actions and fails routinely.
-          # Re-enable when things get more reliable.
-          # - name: macOS
-          #   os: macos-latest
-          #   python-version: 3.9
-          #   toxenv: py39
+  crds:
+    name: retrieve current CRDS context
+    runs-on: ubuntu-latest
+    env:
+      OBSERVATORY: jwst
+      CRDS_PATH: /tmp/crds_cache
+      CRDS_SERVER_URL: https://jwst-crds.stsci.edu
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install tox
-        run: |
-          pip install tox
-
-      - name: Run tests
-        run: tox -e ${{ matrix.toxenv }}
-
-      - name: Upload coverage to codecov
-        if: ${{ contains(matrix.toxenv,'-cov') }}
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage.xml
-          flags: unit
-          fail_ci_if_error: true
+      - id: context
+        run: >
+          echo "pmap=$(
+          curl -s -X POST -d '{"jsonrpc": "1.0", "method": "get_default_context", "params": ["${{ env.OBSERVATORY }}"], "id": 1}' ${{ env.CRDS_SERVER_URL }}/json/ |
+          python -c "import sys, json; print(json.load(sys.stdin)['result'])"
+          )" >> $GITHUB_OUTPUT
+        # Get default CRDS_CONTEXT without installing crds client
+        # See https://hst-crds.stsci.edu/static/users_guide/web_services.html#generic-request
+      - id: path
+        run: echo "path=${{ env.CRDS_PATH }}" >> $GITHUB_OUTPUT
+      - id: server
+        run: echo "url=${{ env.CRDS_SERVER_URL }}" >> $GITHUB_OUTPUT
+    outputs:
+      context: ${{ steps.context.outputs.pmap }}
+      path: ${{ steps.path.outputs.path }}
+      server: ${{ steps.server.outputs.url }}
+  check:
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@v1
+    with:
+      envs: |
+        - linux: check-style
+        - linux: check-security
+        - linux: check-dependencies
+        - linux: build-dist
+  test:
+    uses: OpenAstronomy/github-actions-workflows/.github/workflows/tox.yml@main
+    needs: [ crds ]
+    with:
+      setenv: |
+        CRDS_PATH: ${{ needs.crds.outputs.path }}
+        CRDS_SERVER_URL: ${{ needs.crds.outputs.server }}
+        CRDS_CLIENT_RETRY_COUNT: 3
+        CRDS_CLIENT_RETRY_DELAY_SECONDS: 20
+      cache-path: ${{ needs.crds.outputs.path }}
+      cache-key: crds-${{ needs.crds.outputs.context }}
+      envs: |
+        - linux: test-oldestdeps-xdist-cov
+          python-version: 3.8
+        - linux: test-xdist
+          python-version: 3.8
+        - linux: test-xdist
+          python-version: 3.9
+        - linux: test-sdpdeps-xdist
+          python-version: 3.9
+        - linux: test-xdist
+          python-version: 3.10
+        - linux: test-xdist
+          python-version: 3.11
+        - macos: test-xdist
+          python-version: 3.11
+        - linux: test-xdist-cov
+          coverage: codecov

@@ -11,9 +11,10 @@ from astropy.modeling.models import Shift, Const1D, Mapping
 from gwcs.wcstools import grid_from_bounding_box
 from gwcs.utils import _toindex
 
-from .. import datamodels
+from stdatamodels.jwst import datamodels
+from stdatamodels.jwst.datamodels import WavelengthrangeModel
+
 from ..assign_wcs import util
-from ..datamodels import WavelengthrangeModel
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -481,6 +482,7 @@ def extract_grism_objects(input_model,
                 new_slit.meta.wcsinfo.specsys = input_model.meta.wcsinfo.specsys
                 new_slit.meta.coordinates = input_model.meta.coordinates
                 new_slit.meta.wcs = subwcs
+
                 if compute_wavelength:
                     log.debug("Computing wavelengths")
                     new_slit.wavelength = compute_wavelength_array(new_slit)
@@ -497,6 +499,8 @@ def extract_grism_objects(input_model,
                 new_slit.source_xpos = float(obj.xcentroid)
                 new_slit.source_ypos = float(obj.ycentroid)
                 new_slit.source_id = obj.sid
+                new_slit.source_dec = obj.sky_centroid.dec.value
+                new_slit.source_ra = obj.sky_centroid.ra.value
                 new_slit.bunit_data = input_model.meta.bunit_data
                 new_slit.bunit_err = input_model.meta.bunit_err
                 slits.append(new_slit)

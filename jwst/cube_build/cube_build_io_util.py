@@ -1,6 +1,7 @@
 """ Read in reference files for the cube_build setp
 """
-from .. import datamodels
+from stdatamodels.jwst import datamodels
+
 import logging
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -123,6 +124,8 @@ def read_cubepars(par_filename,
                 for tabdata in ptab.ifucubepars_multichannel_driz_wavetable:
                     table_wave = tabdata['WAVELENGTH']
                     instrument_info.SetMultiChannelDrizTable(table_wave)
+            ptab.close()
+            del ptab
 
     # Read in NIRSPEC Values
     elif instrument == 'NIRSPEC':
@@ -230,3 +233,7 @@ def read_cubepars(par_filename,
                     table_scalerad = tabdata['SCALERAD']
                     instrument_info.SetHighEMSMTable(table_wave, table_sroi,
                                                      table_wroi, table_scalerad)
+
+
+            ptab.close()
+            del ptab

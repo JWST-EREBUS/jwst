@@ -15,7 +15,9 @@ from astropy import coordinates as coord
 from tweakwcs.correctors import JWSTWCSCorrector
 from tweakwcs.imalign import align_wcs
 
-from jwst.datamodels import ImageModel, ModelContainer
+from stdatamodels.jwst.datamodels import ImageModel
+
+from jwst.datamodels import ModelContainer
 from jwst.tweakreg import tweakreg_step
 
 import gwcs
@@ -191,7 +193,7 @@ def _make_reference_gwcs_wcs(fits_hdr):
     return gw
 
 
-def _match(x, y):
+def _match(x, y, **kwargs):
     lenx = len(x)
     leny = len(y)
     if lenx == leny:
@@ -390,14 +392,16 @@ def test_multichip_alignment_step(monkeypatch):
     step = tweakreg_step.TweakRegStep()
     step.fitgeometry = 'general'
     step.nclip = 0
-    # Increase matching tolerance to pass 'fit_quality_is_good' test.
+    # Increase matching tolerance to pass '_is_wcs_correction_small' test.
     # This test would detect large corrections and therefore
     # would flag the quality of the fit as "bad" and therefore, it will not
-    # apply computed corrections ('fit_quality_is_good' test was designed by
+    # apply computed corrections ('_is_wcs_correction_small' test was designed by
     # Warren for evaluating "quality of fit" for HAP).
-    step.tolerance = 2
-    # Alternatively, disable this 'fit_quality_is_good' test:
-    # step.fit_quality_is_good = lambda x, y: True
+    step.tolerance = 0.1
+    step.use2dhist = True
+    step.searchrad = 20
+    # Alternatively, disable this '_is_wcs_correction_small' test:
+    # step._is_wcs_correction_small = lambda x, y: True
 
     mr, m1, m2 = step.process(mc)
 

@@ -32,11 +32,12 @@ from jwst.associations.lib.dms_base import (
     SPEC2_SCIENCE_EXP_TYPES,
 )
 from jwst.associations.lib.member import Member
+from jwst.associations.lib.process_list import ListCategory
+from jwst.associations.lib.product_utils import prune_duplicate_products
 from jwst.associations.lib.rules_level3_base import _EMPTY, DMS_Level3_Base
 from jwst.associations.lib.rules_level3_base import Utility as Utility_Level3
-from jwst.lib.suffix import remove_suffix
-from jwst.associations.lib.product_utils import prune_duplicate_products
 from jwst.associations.lib.utilities import getattr_from_list, getattr_from_list_nofail
+from jwst.lib.suffix import remove_suffix
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -50,10 +51,13 @@ __all__ = [
     'AsnMixin_Lv2Special',
     'AsnMixin_Lv2Spectral',
     'AsnMixin_Lv2WFSS',
+    'Constraint_Background',
     'Constraint_Base',
     'Constraint_ExtCal',
     'Constraint_Image_Nonscience',
     'Constraint_Image_Science',
+    'Constraint_Imprint',
+    'Constraint_Imprint_Special',
     'Constraint_Mode',
     'Constraint_Single_Science',
     'Constraint_Special',
@@ -115,18 +119,30 @@ class DMSLevel2bBase(DMSBaseMixin, Association):
         if 'asn_pool' not in self.data:
             self.data['asn_pool'] = 'none'
 
-    def check_and_set_constraints(self, item):
-        """Override of Association method
+    def get_exposure_type(self, item, default='science'):
+        """General Level 2 override of exposure type definition
 
-        An addition check is made on candidate type.
-        Level 2 associations can only be created by
-        OBSERVATION and BACKGROUND candidates.
+        The exposure type definition is overridden from the default
+        for the following cases:
+
+        - 'psf' -> 'science'
+
+        Parameters
+        ----------
+        item : dict
+            The pool entry to determine the exposure type of
+        default : str or None
+            The default exposure type.
+            If None, routine will raise LookupError
+        Returns
+        -------
+        exposure_type
+            Always what is defined as `default`
         """
-        match, reprocess = super(DMSLevel2bBase, self).check_and_set_constraints(item)
-        if match and not self.acid.type in ['observation', 'background']:
-            return False, []
-        else:
-            return match, reprocess
+        self.original_exposure_type = super(DMSLevel2bBase, self).get_exposure_type(item, default=default)
+        if self.original_exposure_type == 'psf':
+            return default
+        return self.original_exposure_type
 
     def members_by_type(self, member_type):
         """Get list of members by their exposure type"""
@@ -732,6 +748,19 @@ class Constraint_Base(Constraint):
         ])
 
 
+class Constraint_Background(DMSAttrConstraint):
+    """Select backgrounds"""
+
+    def __init__(self):
+        super(Constraint_Background, self).__init__(
+            sources=['bkgdtarg'],
+            force_unique=False,
+            name='background',
+            force_reprocess=ListCategory.EXISTING,
+            only_on_match=True,
+        )
+
+
 class Constraint_ExtCal(Constraint):
     """Remove any nis_extcals from the associations, they
        are NOT to receive level-2b or level-3 processing!"""
@@ -746,6 +775,59 @@ class Constraint_ExtCal(Constraint):
                 )
             ],
             reduce=Constraint.notany
+        )
+
+
+class Constraint_Imprint(Constraint):
+    """Select on imprint exposures"""
+
+    def __init__(self):
+        super(Constraint_Imprint, self).__init__(
+            [
+                DMSAttrConstraint(
+                    name='imprint',
+                    sources=['is_imprt']
+                ),
+                DMSAttrConstraint(
+                    name='mosaic_tile',
+                    sources=['mostilno'],
+                ),
+            ],
+            reprocess_on_match=True,
+            work_over=ListCategory.EXISTING,
+        )
+
+
+class Constraint_Imprint_Special(Constraint):
+    """Select on imprint exposures"""
+
+    def __init__(self, association=None):
+        # If an association is not provided, the check for original
+        # exposure type is ignored.
+        if association is None:
+            sources = lambda item: 'not imprint'
+        else:
+            sources = lambda item: association.original_exposure_type
+
+        super(Constraint_Imprint_Special, self).__init__(
+            [
+                 DMSAttrConstraint(
+                    name='imprint',
+                    sources=['is_imprt'],
+                    force_reprocess=ListCategory.EXISTING,
+                    only_on_match=True,
+                ),
+                DMSAttrConstraint(
+                    name='mosaic_tile',
+                    sources=['mostilno'],
+                ),
+                SimpleConstraint(
+                    value='imprint',
+                    sources=sources,
+                    test=lambda v1, v2: v1 != v2,
+                    force_unique=False,
+                ),
+            ],
         )
 
 
@@ -874,17 +956,21 @@ class Constraint_Image_Nonscience(Constraint):
         )
 
 
-class Constraint_Single_Science(SimpleConstraint):
+class Constraint_Single_Science(Constraint):
     """Allow only single science exposure
 
     Parameters
     ----------
     has_science_fn : func
-        Function to determine whether the association
-        has a science member already. No arguments are provided.
+        Function to determine whether the association has a science member already.
+        No arguments are provided
+
+    exposure_type_fn : func
+        Function to determine the association exposure type of the item.
+        Should take a single argument of item.
 
     sc_kwargs : dict
-        Keyword arguments to pass to the parent class `SimpleConstraint`
+        Keyword arguments to pass to the parent class `Constraint`
 
     Notes
     -----
@@ -894,11 +980,18 @@ class Constraint_Single_Science(SimpleConstraint):
     this constraint.
     """
 
-    def __init__(self, has_science_fn, **sc_kwargs):
+    def __init__(self, has_science_fn, exposure_type_fn, **sc_kwargs):
         super(Constraint_Single_Science, self).__init__(
-            name='single_science',
-            value=False,
-            sources=lambda item: has_science_fn(),
+            [
+                SimpleConstraint(
+                    value=True,
+                    sources=lambda item: exposure_type_fn(item) == 'science',
+                ),
+                SimpleConstraint(
+                    value=False,
+                    sources=lambda item: has_science_fn(),
+                    ),
+            ],
             **sc_kwargs
         )
 
@@ -1005,10 +1098,22 @@ class AsnMixin_Lv2Nod:
 
 class AsnMixin_Lv2Special:
     """Process special and non-science exposures as science.
+
+    Attributes
+    ----------
+    original_exposure_type : str
+        The original exposure type of what is referred to as the "science" member
     """
+
+    original_exposure_type = None
 
     def get_exposure_type(self, item, default='science'):
         """Override to force exposure type to always be science
+
+        The only case where this should not happen is if the association
+        already has its science, and the current item is an imprint. Leave
+        that item as an imprint.
+
         Parameters
         ----------
         item : dict
@@ -1018,10 +1123,14 @@ class AsnMixin_Lv2Special:
             If None, routine will raise LookupError
         Returns
         -------
-        exposure_type : 'science'
-            Always returns as science
+        exposure_type
+            Always what is defined as `default`
         """
-        return 'science'
+        self.original_exposure_type = super(AsnMixin_Lv2Special, self).get_exposure_type(item, default=default)
+        if self.has_science():
+            if self.original_exposure_type == 'imprint':
+                return 'imprint'
+        return default
 
 
 class AsnMixin_Lv2Spectral(DMSLevel2bBase):

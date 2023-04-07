@@ -13,13 +13,15 @@ from tweakwcs.imalign import align_wcs
 from tweakwcs.correctors import JWSTWCSCorrector
 from tweakwcs.matchutils import XYXYMatch
 
+from stdatamodels.jwst.datamodels.util import is_association
+
+from jwst.datamodels import ModelContainer
+
 # LOCAL
 from ..stpipe import Step
-from .. import datamodels
 from ..assign_wcs.util import update_fits_wcsinfo
 from . import astrometric_utils as amutils
 from . tweakreg_catalog import make_tweakreg_catalog
-from ..datamodels.util import is_association
 
 
 def _oxford_or_str_join(str_list):
@@ -110,7 +112,7 @@ class TweakRegStep(Step):
 
         try:
             if use_custom_catalogs and catdict:
-                images = datamodels.ModelContainer()
+                images = ModelContainer()
                 if isinstance(input, str):
                     asn_dir = path.dirname(input)
                     asn_data = images.read_asn(input)
@@ -128,15 +130,17 @@ class TweakRegStep(Step):
                     images.from_asn(input)
 
                 else:
-                    images = datamodels.ModelContainer(input)
+                    images = ModelContainer(input)
                     for im in images:
                         filename = im.meta.filename
                         if filename in catdict:
-                            print(f"setting {filename}.tweakreg_catalog = {repr(catdict[filename])}")
+                            self.log.info(
+                                f"setting meta.tweakreg_catalog of '{filename}' to {repr(catdict[filename])}"
+                            )
                             im.meta.tweakreg_catalog = catdict[filename]
 
             else:
-                images = datamodels.ModelContainer(input)
+                images = ModelContainer(input)
 
         except TypeError as e:
             e.args = ("Input to tweakreg must be a list of DataModels, an "
@@ -402,7 +406,6 @@ class TweakRegStep(Step):
             # Check that there are enough GAIA sources for a reliable/valid fit
             num_ref = len(ref_cat)
             if num_ref < self.abs_minobj:
-                # Raise Exception here to avoid rest of code in this try block
                 self.log.warning(
                     f"Not enough sources ({num_ref}) in the reference catalog "
                     "for the single-group alignment step to perform a fit. "
@@ -452,7 +455,8 @@ class TweakRegStep(Step):
             image_model.meta.cal_step.tweakreg = 'COMPLETE'
 
             # retrieve fit status and update wcs if fit is successful:
-            if 'SUCCESS' in imcat.meta.get('fit_info')['status']:
+            if ('fit_info' in imcat.meta and
+                    'SUCCESS' in imcat.meta['fit_info']['status']):
 
                 # Update/create the WCS .name attribute with information
                 # on this astrometric fit as the only record that it was
@@ -487,7 +491,11 @@ class TweakRegStep(Step):
 
     def _is_wcs_correction_small(self, wcs, twcs):
         """Check that the newly tweaked wcs hasn't gone off the rails"""
-        tolerance = 10.0 * self.tolerance * u.arcsec
+        if self.use2dhist:
+            max_corr = 2 * (self.searchrad + self.tolerance) * u.arcsec
+        else:
+            max_corr = 2 * (max(abs(self.xoffset), abs(self.yoffset)) +
+                            self.tolerance) * u.arcsec
 
         ra, dec = wcs.footprint(axis_type="spatial").T
         tra, tdec = twcs.footprint(axis_type="spatial").T
@@ -496,7 +504,7 @@ class TweakRegStep(Step):
 
         separation = skycoord.separation(tskycoord)
 
-        return (separation < tolerance).all()
+        return (separation < max_corr).all()
 
     def _imodel2wcsim(self, image_model):
         # make sure that we have a catalog:
