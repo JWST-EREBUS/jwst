@@ -1,4 +1,55 @@
-1.10.1 (unreleased)
+1.10.3 (unreleased)
+===================
+
+datamodels
+----------
+
+- Removed use of deprecated ``stdatamodels.jwst.datamodels.DataModel`` class and
+  replaced it with ``stdatamodels.jwst.datamodels.JwstDataModel``. [#7571]
+
+documentation
+-------------
+
+- Fix bugs in implementation of ``pixel_replace`` documentation. [#7565]
+
+- Update tutorial usage of ``jump.threshold`` to ``jump.rejection_threshold``. [#7572]
+
+flat_field
+----------
+
+- Refactored NIRSpec 1D flat interpolation for improved performance. [#7550]
+
+other
+-----
+
+- Remove the use of ``stdatamodels.s3_utils`` from ``jwst``, and the ``aws`` install
+  option. [#7542]
+
+- Drop support for Python 3.8 [#7552]
+
+- Override package dependencies with requirements file when requested [#7557]
+
+pathloss
+--------
+
+- Bug fix for NIRSpec fixed-slit data to remove double application of correction
+  factors. [#7566]
+
+ramp_fitting
+------------
+
+- Updated CI tests due to a change in STCAL, which fixed a bug in the way the number
+  of groups in a segment are computed when applying optimal weighting to line
+  fit segments. [#7560, spacetelescope/stcal#163]
+
+
+1.10.2 (2023-04-14)
+===================
+
+- pinned `stdatamodels`, `stcal`, and `stpipe` below API-breaking changes [#7555]
+
+
+1.10.1 (2023-04-13)
 ===================
 
 documentation
@@ -18,11 +69,20 @@ flat_field
 
 - Updated to allow processing of NIRSpec fixed-slit 3D (rateints) files. [#7516]
 
+jump
+----
+- Added a new parameter that limits maximum size of extension of jump. It exists
+  in the STCAL jump code but not in JWST. This allows the parameter to be changed.
+  Also, scaled two input parameters that are listed as radius to be a factor of two
+  higher to match the opencv code that uses diameter. [#7545]
+  
 other
 -----
 
 - Remove use of deprecated ``pytest-openfiles`` plugin. This has been replaced by
   catching ``ResourceWarning``s. [#7526]
+
+- Remove use of ``codecov`` package. [#7543]
 
 photom
 ------
@@ -157,6 +217,12 @@ pipeline
 - Update the calwebb_spec2 pipeline to make a deep copy of the current results before
   calling the ``resample_spec`` and ``extract_1d`` steps, to avoid issues with the
   input data accidentally getting modified by those steps. [#7451]
+
+pixel_replace
+-------------
+
+- Add ``pixel_replace`` step to ``Spec2Pipeline``, which uses a weighted interpolation
+  to estimate flux values for pixels flagged as ``DO_NOT_USE``. [#7398]
 
 ramp_fitting
 ------------
