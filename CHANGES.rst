@@ -1,4 +1,143 @@
-1.11.2 (unreleased)
+1.11.5 (unreleased)
+===================
+
+assign_wcs
+----------
+
+- Use isinstance instead of comparison with a type for lamp_mode inspection [#7801]
+
+- Save bounding box to imaging WCS matching the shape of the data, for datamodels
+  without a defined bounding box. [#7809]
+
+associations
+------------
+
+- Update the Level 3 product name construction for NIRCam coronagraphic data that
+  get processed through both coron3 and image3, to add the suffix "-image3" to the
+  product name for the data processed as imaging, in order to prevent duplicate
+  Level 3 file names from each pipeline. [#7826]
+
+- Update the Level 2 spectroscopic ASN rules to exclude any NIRSpec IFU exposures that
+  use filter/grating combinations known to produce no data on the NRS2 detector.
+  [#7833]
+
+calwebb_spec2
+-------------
+
+- Run ``pixel_replace`` before setting metadata and suffix of datamodel
+  that is returned by the pipeline to ensure a file is created with the
+  expected ``_cal`` suffix. [#7772]
+
+cube_build
+----------
+
+- Replace scale1 and scale2 arguments with scalexy, add debug option debug_spaxel,
+  and add more details to docs. [#7783]
+
+- Correct slicer scale and orientation in output WCS for IFU cubes built in internal_cal
+  coordinates, for NIRSpec calibration analysis. [#7811]
+
+datamodels
+----------
+
+- Remove ``jwst.datamodels.schema`` in favor of ``stdatamodels.schema`` [#7660]
+
+engdb_tools
+-----------
+
+- Check alternative host is alive before attempting to run test for
+  access to avoid waiting the full timeout during test runs [#7780]
+
+flat_field
+----------
+
+- Modify the test_flatfield_step_interface unit test to prevent it from causing
+  other tests to fail. [#7752]
+
+general
+-------
+
+- Require minimum asdf version 2.14.4 [#7801]
+
+jump
+____
+
+- Updated documentation for the step parameters [#7778]
+
+- Added argument description for three_group_rejection_threshold and
+  four_group_rejection_threshold [#7839].
+
+master_background
+-----------------
+
+- Allow the user to write the 2D expanded version of the user-provided 1D background for each
+  file in the assocation. [#7714]
+
+outlier_detection
+-----------------
+
+- Fix naming and logging of intermediate blot files written to disk for imaging modes. [#7784]
+
+pathloss
+--------
+
+- Fix interpolation error for point source corrections. [#7799]
+
+pixel_replace
+-------------
+
+- Add the minimum gradient method for the MIRI MRS. [#7823]
+
+refpix
+------
+
+- Modified algorithm of intermittent bad pixels factor to be the number
+  of sigmas away from mean for the corresponding array (either differences,
+  means, or standard deviations arrays). [#7745]
+
+resample
+--------
+
+- Use the same logic for computing input range for resample step from input
+  image shape and the bounding box both for ``SCI`` image as well as for the
+  ``ERR`` and ``VARIANCE_*`` images. [#7774]
+
+- Update the following exposure time keywords: XPOSURE (EFFEXPTM),
+  DURATION and TELAPSE. [#7793]
+
+residual_fringe
+---------------
+
+- Use scipy.interpolate.BSpline instead of astropy.modeling.Spline1D in
+  residual_fringe fitting utils [#7764]
+
+undersampling_correction
+------------------------
+
+- Changed default signal threshold, added efficient routine to flag neighborhood
+  pixels, added new unit test, improved earlier unit tests, updated docs. [#7740]
+  
+
+1.11.4 (2023-08-14)
+===================
+
+set_telescope_pointing
+----------------------
+
+- Fixes to account for the fact that the commanded Guide Star position is always
+  relative to FGS1 even when guiding with FGS2. [#7804]
+
+1.11.3 (2023-07-17)
+===================
+
+refpix
+------
+
+- Fixed potential crash due to empty list for NIRSpec IRS2 mode, and
+  incorporated a factor to mitigate overcorrection. [#7731]
+
+
+1.11.2 (2023-07-12)
 ===================
 
 documentation
@@ -6,6 +145,29 @@ documentation
 
 - Update references to datamodels in docs to point to stdatamodels which
   now provides datamodels for jwst. [#7672]
+
+- Update the ``extract_2d`` step docs to give better descriptions of how to create
+  and use object lists for WFSS grism image extractions. [#7684]
+
+- Remove direct mistune dependency (and approximate pin) and increase minimum
+  required sphinx-asdf version [#7696]
+
+- Fix minor formatting typos in associations docs. [#7694]
+
+- Add note to ``calwebb_spec2`` step table to clarify the swapped order of ``photom``
+  and ``extract_1d`` for NIRISS SOSS data. [#7709]
+
+jump
+----
+
+- Added a test to prevent a divide by zero when the numger of usable
+  groups is less than one. [#7723]
+
+refpix
+------
+
+- Replace intermittently bad pixels with nearest good reference pixel
+  for NIRSpec IRS2 mode. [#7685]
 
 tweakreg
 --------
@@ -47,6 +209,16 @@ ramp_fitting
   group, the timing for these ramps is not group time.  These adjusted times
   are now used. [#7612, spacetelescope/stcal#173]
 
+tweakreg
+--------
+
+- Fixed a bug in the ``adjust_wcs`` *script* that was preventing passing
+  negative angular arguments in the engineering format. Exposed ``adjust_wcs``
+  function's docstring to be used in building ``jwst`` documentation. [#7683]
+
+- Added support for units for angular arguments to both ``adjust_wcs`` script
+  and function. [#7683]
+
 
 1.11.0 (2023-06-21)
 ===================
@@ -80,7 +252,7 @@ cube_build
 ----------
 
 - Remove deleting the ``spaxel_dq`` array twice when using a weighting method of either msm or emsm. [#7586]
-  
+
 - Updated to read wavelength range for NIRSpec IFU cubes from the cubepars reference file,
   instead of setting it based on the data. This makes use of new NIRSpec IFU cubepars reference
   files with wavelength arrays for the drizzle method. [#7559]
@@ -131,7 +303,7 @@ flat_field
 ----------
 
 - Added log messages for reporting flat reference file(s) used. [#7606]
-  
+
 other
 -----
 
@@ -195,7 +367,6 @@ regtest
 -------
 
 - Updated input filenames for NIRCam ``wfss_contam`` tests [#7595]
-
 srctype
 -------
 
@@ -213,7 +384,7 @@ tweakreg
   another. It is an analog of the ``tweakback`` task in the
   ``drizzlepac``. [#7573, #7591]
 
-- Added the 'GAIADR3' catalog to the available options for alignment; 
+- Added the 'GAIADR3' catalog to the available options for alignment;
   this has been enabled as the default option [#7611].
 
 

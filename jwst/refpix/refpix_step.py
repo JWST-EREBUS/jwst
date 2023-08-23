@@ -17,11 +17,12 @@ class RefPixStep(Step):
     class_alias = "refpix"
 
     spec = """
-        odd_even_columns = boolean(default=True)
-        use_side_ref_pixels = boolean(default=True)
-        side_smoothing_length = integer(default=11)
-        side_gain = float(default=1.0)
-        odd_even_rows = boolean(default=True)
+        odd_even_columns = boolean(default=True) # Compute reference signal separately for even/odd columns
+        use_side_ref_pixels = boolean(default=True) # Use side reference pixels for reference signal for each row
+        side_smoothing_length = integer(default=11) # Median window smoothing height for side reference signal
+        side_gain = float(default=1.0) # Multiplicative factor for side reference signal before subtracting from rows
+        odd_even_rows = boolean(default=True) # Compute reference signal separately for even- and odd-numbered rows
+        ovr_corr_mitigation_ftr = float(default=3.0) # Factor to avoid overcorrection of bad reference pixels for IRS2
     """
 
     reference_file_types = ['refpix']
@@ -51,7 +52,8 @@ class RefPixStep(Step):
                 irs2_model = datamodels.IRS2Model(self.irs2_name)
 
                 # Apply the IRS2 correction scheme
-                result = irs2_subtract_reference.correct_model(input_model, irs2_model)
+                result = irs2_subtract_reference.correct_model(input_model, irs2_model,
+                                  ovr_corr_mitigation_ftr=self.ovr_corr_mitigation_ftr)
 
                 if result.meta.cal_step.refpix != 'SKIPPED':
                     result.meta.cal_step.refpix = 'COMPLETE'
