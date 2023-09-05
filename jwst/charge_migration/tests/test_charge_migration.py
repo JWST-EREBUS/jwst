@@ -3,17 +3,18 @@ import numpy as np
 from stdatamodels.jwst.datamodels import RampModel
 from stdatamodels.jwst.datamodels import dqflags
 
-from jwst.undersampling_correction.undersampling_correction import undersampling_correction
-from jwst.undersampling_correction.undersampling_correction_step import UndersamplingCorrectionStep
+from jwst.charge_migration.charge_migration import charge_migration
+from jwst.charge_migration.charge_migration_step import ChargeMigrationStep
 
 import numpy.testing as npt
 
 test_dq_flags = dqflags.pixel
 GOOD = test_dq_flags["GOOD"]
 DNU = test_dq_flags["DO_NOT_USE"]
-UNSA = test_dq_flags["UNDERSAMP"]
+CHLO = test_dq_flags["CHARGELOSS"]
+
 DROU = test_dq_flags["DROPOUT"]
-UNSA_DNU = UNSA + DNU
+CHLO_DNU = CHLO + DNU
 
 
 def test_pix_0():
@@ -34,7 +35,7 @@ def test_pix_0():
     ramp_model.groupdq[0, :, 0, 0] = [GOOD, DNU, GOOD, DNU, DNU, GOOD, GOOD, GOOD, GOOD, DNU]
     in_gdq = ramp_model.groupdq
 
-    out_model = undersampling_correction(ramp_model, signal_threshold)
+    out_model = charge_migration(ramp_model, signal_threshold)
     out_gdq = out_model.groupdq
 
     npt.assert_array_equal(out_gdq, in_gdq)
@@ -47,7 +48,7 @@ def test_pix_1():
     Also tests groups whose data does not exceed the signal threshold;
     similarly 1 group is already flagged as DNU from a previous calibration
     step, and 1 is GOOD. All data beyond the first exceedance are also
-    flagged as UNDERSAMP and DNU.
+    flagged as CHARGELOSS and DNU.
     """
     ngroups, nints, nrows, ncols = 10, 1, 1, 1
     ramp_model, pixdq, groupdq, err = create_mod_arrays(
@@ -59,10 +60,10 @@ def test_pix_1():
     ramp_model.data[0, 1, 0, 0] = np.array((0.5 * signal_threshold), dtype=np.float32)
 
     ramp_model.data[0, 2, 0, 0] = np.array((0.8 * signal_threshold), dtype=np.float32)
-    ramp_model.groupdq[0, 2, 0, 0] = DNU  # should not get UNSA, not an exceedance
+    ramp_model.groupdq[0, 2, 0, 0] = DNU  # should not get CHLO, not an exceedance
 
     ramp_model.data[0, 3, 0, 0] = np.array((signal_threshold + 5000.), dtype=np.float32)
-    ramp_model.groupdq[0, 3, 0, 0] = DNU  # should not get UNSA, although exceedance
+    ramp_model.groupdq[0, 3, 0, 0] = DNU  # should not get CHLO, although exceedance
 
     ramp_model.data[0, 4:, 0, 0] = np.array((signal_threshold + 6000.), dtype=np.float32)
     ramp_model.groupdq[0, 4:, 0, 0] = GOOD
@@ -70,9 +71,9 @@ def test_pix_1():
     true_out_gdq = ramp_model.groupdq.copy()
     true_out_gdq[0, 2, 0, 0] = DNU
     true_out_gdq[0, 3, 0, 0] = DNU
-    true_out_gdq[0, 4:, 0, 0] = UNSA_DNU
+    true_out_gdq[0, 4:, 0, 0] = CHLO_DNU
 
-    out_model = undersampling_correction(ramp_model, signal_threshold)
+    out_model = charge_migration(ramp_model, signal_threshold)
     out_gdq = out_model.groupdq
 
     npt.assert_array_equal(out_gdq, true_out_gdq)
@@ -90,9 +91,9 @@ def test_too_few_groups():
     ramp_model.data[0, :, 0, 0] = 20000.
     sig_thresh = 100.
 
-    result = UndersamplingCorrectionStep.call(ramp_model, skip=False,
+    result = ChargeMigrationStep.call(ramp_model, skip=False,
                                               signal_threshold=sig_thresh)
-    status = result.meta.cal_step.undersampling_correction
+    status = result.meta.cal_step.charge_migration
 
     npt.assert_string_equal(status, "SKIPPED")
 
@@ -146,7 +147,8 @@ def test_flag_neighbors():
     ramp_model.groupdq[:, 1, 2, 2] = [DNU]
     ramp_model.groupdq[:, 2, 1, 1] = [DROU + DNU]
 
-    out_model = undersampling_correction(ramp_model, signal_threshold)
+    out_model = charge_migration(ramp_model, signal_threshold)
+
     out_gdq = out_model.groupdq
 
     true_out_gdq = ramp_model.groupdq.copy()
@@ -167,20 +169,20 @@ def test_flag_neighbors():
             [0,   0,   0],
             [0,   0,   0]],
 
-           [[UNSA_DNU,   0,      0],
-            [UNSA_DNU, UNSA_DNU, 0],
-            [UNSA_DNU, UNSA_DNU, 0],
-            [UNSA_DNU,   0,      0]],
+           [[CHLO_DNU,   0,      0],
+            [CHLO_DNU, CHLO_DNU, 0],
+            [CHLO_DNU, CHLO_DNU, 0],
+            [CHLO_DNU,   0,      0]],
 
-           [[UNSA_DNU,   0,      0],
-            [UNSA_DNU, UNSA_DNU, 0],
+           [[CHLO_DNU,   0,      0],
+            [CHLO_DNU, CHLO_DNU, 0],
             [DNU,        0,      0],
-            [UNSA_DNU, UNSA_DNU, 0]],
+            [CHLO_DNU, CHLO_DNU, 0]],
 
-           [[UNSA_DNU,   0,       0],
-            [UNSA_DNU, UNSA_DNU, UNSA_DNU],
-            [UNSA_DNU, UNSA_DNU, UNSA_DNU],
-            [UNSA_DNU, UNSA_DNU, UNSA_DNU]]], dtype=np.uint8)
+           [[CHLO_DNU,   0,       0],
+            [CHLO_DNU, CHLO_DNU, CHLO_DNU],
+            [CHLO_DNU, CHLO_DNU, CHLO_DNU],
+            [CHLO_DNU, CHLO_DNU, CHLO_DNU]]], dtype=np.uint8)
 
     npt.assert_array_equal(out_gdq, true_out_gdq)
 

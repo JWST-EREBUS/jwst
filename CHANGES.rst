@@ -21,6 +21,13 @@ associations
   use filter/grating combinations known to produce no data on the NRS2 detector.
   [#7833]
 
+- Remove order dependency on association diffing. [#7853]
+
+background
+----------
+
+- Allow background accumulation for combinations of full and subarray observations [#7827]
+
 calwebb_spec2
 -------------
 
@@ -28,6 +35,13 @@ calwebb_spec2
   that is returned by the pipeline to ensure a file is created with the
   expected ``_cal`` suffix. [#7772]
 
+charge_migration
+----------------
+
+- Step was renamed from undersampling_migration. Changed default signal threshold,
+  added efficient routine to flag neighborhood pixels, added new unit test,
+  improved earlier unit tests, updated docs. [#7825]
+  
 cube_build
 ----------
 
@@ -37,16 +51,25 @@ cube_build
 - Correct slicer scale and orientation in output WCS for IFU cubes built in internal_cal
   coordinates, for NIRSpec calibration analysis. [#7811]
 
+- Fix a bug with memory allocation in C extensions when weighting=emsm. [#7847]
+
 datamodels
 ----------
 
 - Remove ``jwst.datamodels.schema`` in favor of ``stdatamodels.schema`` [#7660]
+
+- updated ``stdatamodels`` pin to ``>=1.8.0`` [#7854]
 
 engdb_tools
 -----------
 
 - Check alternative host is alive before attempting to run test for
   access to avoid waiting the full timeout during test runs [#7780]
+
+extract_2d
+----------
+
+- Updated unit test truth values after NIRCam WFSS transform updates [#7851]
 
 flat_field
 ----------
@@ -58,6 +81,8 @@ general
 -------
 
 - Require minimum asdf version 2.14.4 [#7801]
+
+- Require minimum asdf version 2.15.1 and numpy 1.22 [#7861]
 
 jump
 ____
@@ -78,10 +103,17 @@ outlier_detection
 
 - Fix naming and logging of intermediate blot files written to disk for imaging modes. [#7784]
 
+- Files outlier_i2d and blot files will only show up and remain on disk if
+  save_intermediary_results=True. [#7845]
+
 pathloss
 --------
 
 - Fix interpolation error for point source corrections. [#7799]
+
+- Update the MIRI LRS fixed-slit correction to default to the center of the slit
+  when the computed target location is outside the slit. Add the parameter 
+  "user_slit_loc" to allow specifying the source location to use. [#7806]
 
 pixel_replace
 -------------
@@ -110,12 +142,15 @@ residual_fringe
 
 - Use scipy.interpolate.BSpline instead of astropy.modeling.Spline1D in
   residual_fringe fitting utils [#7764]
-
+  
 undersampling_correction
 ------------------------
 
 - Changed default signal threshold, added efficient routine to flag neighborhood
   pixels, added new unit test, improved earlier unit tests, updated docs. [#7740]
+
+- Removed directories for undersampling_correction step, as the step has been
+  renamed charge_migration. [#7850]
   
 
 1.11.4 (2023-08-14)
