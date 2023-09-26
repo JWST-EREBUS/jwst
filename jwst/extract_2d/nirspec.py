@@ -46,7 +46,7 @@ def nrs_extract2d(input_model, slit_name=None):
                              "be run before extract_2d.")
 
 
-    # JFH: slit2msa is defined in jwst.transforms.models.py on line 291. It is
+    # JFH: slit2msa is defined in stdatamodels.transforms.models.py on line 291. It is
     # a subclass off of astropy.modeling.core import Model that defines models/transformations
     slit2msa = input_model.meta.wcs.get_transform('slit_frame', 'msa_frame')
     # This is a kludge but will work for now.
