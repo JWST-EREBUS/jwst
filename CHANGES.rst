@@ -1,7 +1,68 @@
-1.12.2 (unreleased)
+1.12.4 (unreleased)
 ===================
 
 - 
+
+1.12.3 (2023-10-03)
+===================
+
+documentation
+-------------
+
+- Updated the ``calwebb_spec2`` pipeline docs to indicate that the ``pixel_replace`` step is
+  applied to NIRSpec IFU data, and made minor wording updates to the ``pixel_replace`` step
+  docs.  [#7990]
+
+- Updated the ``FilterOffset`` reference file docs to indicate that this reference file
+  type is also used for NIRISS and increase clarity on how the offsets are applied. [#7991]
+
+
+1.12.2 (2023-10-02)
+===================
+
+assign_wcs
+----------
+
+- Increase margin at edges of NIRSpec MOS slits to reduce edge effects in resampling. [#7976]
+
+associations
+------------
+
+- Prevent group candidates from generating level 3 TSO associations. [#7982]
+
+charge_migration
+----------------
+
+- Added tests to see if the data array is changed after runnung the step and
+  set the default signal_threshold to 25000. [#7895]
+
+extract_1d
+----------
+
+- Move MIRI MRS residual fringe correction later in the code after normalization by
+  pixel area of each wavelength plane, and apply residual fringe correction to surface
+  brightness and background vectors as well as flux. [#7980]
+
+flat_field
+----------
+
+- Update the ``combine_fast_slow`` function for NIRSpec spectroscopic flats 
+  to use 1D error values provided by F-flat reference files. [#7978]
+
+- For NIRSpec modes, set all DO_NOT_USE pixels to NaN after flat
+  correction. [#7979]
+
+set_telescope_pointing
+----------------------
+
+- Ensure that CRPIX1/2 are set to default values for Guiding modes that fail pointing determination [#7983]
+
+straylight
+----------
+
+- Adjust MIRI MRS straylight routine to ensure cross-artifact correction does not
+  get applied to pedestal dark signal. [#7980]
+
 
 1.12.1 (2023-09-26)
 ===================
@@ -119,7 +180,7 @@ datamodels
 - updated ``stdatamodels`` pin to ``>=1.8.0`` [#7854]
 
 documentation
-------------
+-------------
 
 - Fixed a reference to the ``ramp_fitting` module in the user documentation. [#7898]
 
