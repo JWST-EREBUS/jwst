@@ -340,6 +340,7 @@ def create_input(instrument, detector, exptype,
             input_model.var_flat = np.ones(shape, dtype=np.float32)
             input_model.meta.subarray.name = 'SUB256'       # matches 'GENERIC'
             input_model.meta.target.source_type = 'POINT'
+            input_model.meta.exposure.mid_time = 60000.0 # Added for new PHOTOM step
             input_model.meta.photometry.pixelarea_arcsecsq = 0.0025
             input_model.meta.photometry.pixelarea_steradians = 0.0025 * A2_TO_SR
     elif instrument == 'FGS':
@@ -780,7 +781,7 @@ def create_photom_miri_image(min_wl=16.5, max_wl=19.5,
     """
 
     filter = ["F1800W", "F2100W", "F2550W"]
-    subarray = ["GENERIC", "GENERIC", "GENERIC"]
+    subarray = ["SUB256", "SUB256", "SUB256"]
 
     nrows = len(filter)
 
@@ -794,7 +795,15 @@ def create_photom_miri_image(min_wl=16.5, max_wl=19.5,
                       ('uncertainty', '<f4')])
     reftab = np.array(list(zip(filter, subarray, photmjsr, uncertainty)),
                       dtype=dtype)
-    ftab = datamodels.MirImgPhotomModel(phot_table=reftab)
+    timecoeff_amp = np.linspace(2.1, 2.1 + (nrows - 1.) * 0.1, nrows)
+    timecoeff_tau = np.asarray([145, 145, 145])
+    timecoeff_t0 = np.asarray([59720, 59720, 59720])
+    dtypec = np.dtype([('amplitude', '<f4'),
+                      ('tau', '<f4'),
+                      ('t0', '<f4')])
+    reftabc = np.array(list(zip(timecoeff_amp, timecoeff_tau, timecoeff_t0)),
+                      dtype=dtypec)
+    ftab = datamodels.MirImgPhotomModel(phot_table=reftab, timecoeff=reftabc)
 
     return ftab
 
@@ -1130,7 +1139,7 @@ def test_nirspec_fs():
             result.append(ds.input.slits[k].meta.bunit_data == 'MJy/sr')
             result.append(ds.input.slits[k].meta.bunit_err == 'MJy/sr')
 
-    assert np.alltrue(result)
+    assert np.all(result)
 
     ftab.close()
 
@@ -1191,7 +1200,7 @@ def test_nirspec_bright():
     result.append(ds.input.meta.bunit_data == 'MJy')
     result.append(ds.input.meta.bunit_err == 'MJy')
 
-    assert np.alltrue(result)
+    assert np.all(result)
 
 
 def test_nirspec_msa():
@@ -1231,7 +1240,7 @@ def test_nirspec_msa():
         ratio = output[iy, ix] / input[iy, ix]
         result.append(np.allclose(ratio, compare, rtol=1.e-7))
 
-    assert np.alltrue(result)
+    assert np.all(result)
 
 
 """ Skip this test because it would require a realistic wcs.
@@ -1276,7 +1285,7 @@ def test_niriss_wfss():
         ratio = output[iy, ix] / input[iy, ix]
         result.append(np.allclose(ratio, compare, rtol=1.e-7))
 
-    assert np.alltrue(result)
+    assert np.all(result)
 
 
 def test_niriss_soss():
@@ -1364,7 +1373,7 @@ def test_miri_mrs():
     compare = value
     ratio = output[iy, ix] / input[iy, ix]
     result.append(math.isclose(ratio, compare, rel_tol=1.e-7))
-    assert np.alltrue(result)
+    assert np.all(result)
 
 
 def test_miri_lrs():
@@ -1415,10 +1424,13 @@ def test_miri_image():
     rownum = find_row_in_ftab(save_input, ftab, ['filter'],
                               slitname=None, order=None)
     photmjsr = ftab.phot_table['photmjsr'][rownum]
+    amplitude = ftab.timecoeff['amplitude'][rownum]
+    tau = ftab.timecoeff['tau'][rownum]
+    t0 = ftab.timecoeff['t0'][rownum]
     shape = input.shape
     ix = shape[1] // 2
     iy = shape[0] // 2
-    compare = photmjsr
+    compare = photmjsr + amplitude * np.exp(-(60000 - t0)/tau) # Added for new PHOTOM step
     # Compare the values at the center pixel.
     ratio = output[iy, ix] / input[iy, ix]
     assert np.allclose(ratio, compare, rtol=1.e-7)
@@ -1623,7 +1635,7 @@ def test_apply_photom_2(srctype):
         ratio = output[iy, ix] / input[iy, ix]
         result.append(np.allclose(ratio, compare, rtol=1.e-7))
 
-    assert np.alltrue(result)
+    assert np.all(result)
 
 
 def test_find_row():

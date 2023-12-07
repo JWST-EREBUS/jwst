@@ -1,7 +1,160 @@
-1.12.4 (unreleased)
+1.12.6 (unreleased)
 ===================
 
-- 
+background
+----------
+
+- Ensure that WFSS background mask does not leave only
+  pixels with DO_NOT_USE flagged. [#8070]
+
+cube_build
+----------
+
+- Fix bug that was causing cube_build to crash when no valid data is found
+  on the detector in the input image(s). [#8001]
+
+documentation
+-------------
+
+- Remove the CRDS PUB notices througout the documentation [#8075]
+
+- Improve Step.spec formatting [#8101]
+
+extract_1d
+----------
+
+- Include zero values in dispersion direction check during
+  SOSS ATOCA algorithm [#8038]
+
+- Use masked median instead of nanmedian wavelength collapse during
+  source finding for ifu_autocen [#8080]
+
+extract_2d
+----------
+
+- Fixed crash with slit_name for MOS. Now the argument should
+  be passed as a string, e.g. slit_name='67'. Included this
+  in the corresponding documentation. [#8081]
+
+- Fixed potential future crash if MSA slitlet name is not an
+  integer. [#8108]
+
+general
+-------
+
+- Increase asdf maximum version to 4. [#8018]
+
+- Remove upper version limit for scipy. [#8033]
+
+- Remove the use of ``pkg_resources`` by ``jwst``. [#8095]
+
+- Fix Python 3.12 support. [#8093]
+
+outlier_detection
+-----------------
+
+- Remove use of ``scipy.signal.medfilt`` which is undefined for ``nan``
+  inputs. [#8033]
+
+- Replace uses of ``datetime.utcnow`` (deprecated in python 3.12) [#8051]
+
+imprint
+-------
+
+- Updated the logging to report which imprint image is being subtracted from the
+  science image. [#8041]
+
+nsclean
+-------
+
+- Implemented this new step, which is used to remove 1/f noise from NIRSpec
+  images. [#8000]
+
+photom
+------
+
+- Added time-dependent correction for MIRI Imager data.
+  [#8096, #8102, spacetelescope/stdatamodels#235]
+
+pipeline
+--------
+
+- Updated the ``calwebb_spec2`` pipeline to add in calling the ``nsclean`` step
+  for NIRSpec exposures. Also rearranged the order of the steps, so that
+  ``msa_flagging`` immediately follows ``assign_wcs``, so that both steps have
+  been applied before calling ``nsclean``. [#8000]
+
+pixel_replace
+-------------
+
+- Fixed a bug that included ``NON_SCIENCE`` flagged pixels while checking
+  for science pixels to be replaced. [#8090]
+
+ramp_fitting
+------------
+
+- Moving some ramp fitting CI tests from JWST to STCAL. [#8060]
+
+resample
+--------
+
+- Recognize additional keys in ASDF files that provide ``output_wcs`` for the
+  resample step. [#7894]
+
+- Set output image size when ``output_wcs`` is provided based on the largest
+  coordinates in the bounding box of the ``output_wcs``. [#7894]
+
+- Completely re-designed computation of the pixel area keywords
+  ``PIXAR_SR`` and ``PIXAR_A2`` for the resampled image. This change also
+  results in modified values in the resampled images. New computations
+  significantly reduce photometric errors. [#7894]
+
+- Improved compatibility with upcoming ``numpy 2.0`` that was affecting
+  decoding of context images and creation of masks. [#8059]
+
+source_catalog
+--------------
+
+- Made meta data flexible for photutils changes. [#8066]
+
+tweakreg
+--------
+
+- Improved how a image group name is determined. [#8012]
+
+
+1.12.5 (2023-10-19)
+===================
+
+datamodels
+----------
+
+- Added support for user-supplied ``group_id`` either via
+ ``model.meta.group_id`` attribute or as a member of the ASN table. [#7997]
+
+refpix
+------
+
+- Revert a change introduced in #7745, erroneously setting 2 detector columns near
+  bad reference pixels to zero. [#8005]
+
+
+1.12.4 (2023-10-12)
+===================
+
+cube_build
+----------
+
+- Keep data models opened by cube build open until the step completes. [#7998]
+
+general
+-------
+
+- Fix numpy 2.0 deprecation warnings in cube_build, photom and wfs_combine. [#7999]
+
+- Pinned dependencies for several in-development packages below their next versions
+  to maintain compatibility. [#8003, #8006]
+
 
 1.12.3 (2023-10-03)
 ===================
@@ -46,7 +199,7 @@ extract_1d
 flat_field
 ----------
 
-- Update the ``combine_fast_slow`` function for NIRSpec spectroscopic flats 
+- Update the ``combine_fast_slow`` function for NIRSpec spectroscopic flats
   to use 1D error values provided by F-flat reference files. [#7978]
 
 - For NIRSpec modes, set all DO_NOT_USE pixels to NaN after flat
@@ -70,7 +223,7 @@ straylight
 extract_1d
 ----------
 
-- For MIRS MRS IFU data allow the user to set the src_type and allow 
+- For MIRS MRS IFU data allow the user to set the src_type and allow
   the user to scale the extraction radius between 0.5 to 3.0 FWHM. [#7883]
 
 - Bug fix for #7883. The input model type is checked to see if the input is
@@ -228,7 +381,11 @@ ____
   four_group_rejection_threshold [#7839].
 
 - Updated argument description and parameter definition to allow
-  integer number of cores to be passed to STCAL jump.py. [#7871]
+  integer number of cores to be passed to STCAL jump.py.
+  [#7871, spacetelescope/stcal#183]
+
+- Enable the detection of snowballs that occur in frames that are
+  within a group. [spacetelescope/stcal#207]
 
 master_background
 -----------------
@@ -250,7 +407,7 @@ pathloss
 - Fix interpolation error for point source corrections. [#7799]
 
 - Update the MIRI LRS fixed-slit correction to default to the center of the slit
-  when the computed target location is outside the slit. Add the parameter 
+  when the computed target location is outside the slit. Add the parameter
   "user_slit_loc" to allow specifying the source location to use. [#7806]
 
 photom
@@ -277,6 +434,12 @@ ramp_fitting
 - Removed unnecessary ramp fitting testing that duplicated testing already done
   in STCAL. [#7888]
 
+- Added more allowable selections for the number of cores to use for
+  multiprocessing. [spacetelescope/stcal#183]
+
+- Updated variance computation for invalid integrations, as well as
+  updating the median rate computation by excluding groups marked as
+  DO_NOT_USE. [spacetelescope/stcal#208]
 
 refpix
 ------
